@@ -1,5 +1,7 @@
+
 # Import various modules
 
+from ast import Try
 import os
 import sys
 import glob
@@ -12,7 +14,9 @@ import math
 import nidaqmx
 
 # The aim of this script is to establish comms with NI-DAQ USB 6001
-# Documentation online: https://github.com/ni/nidaqmx-python/tree/master
+# Official Documentation: https://nidaqmx-python.readthedocs.io/en/stable/
+# Nice introduction: https://www.halvorsen.blog/documents/programming/python/resources/powerpoints/DAQ%20with%20Python.pdf
+# Examples online: https://github.com/ni/nidaqmx-python/tree/master
 # R. Sheehan 21 - 11 - 2025
 
 MOD_NAME_STR = "NI_DAQ_600x"
@@ -171,6 +175,71 @@ def AO_AI_Loopback_Test():
         print(ERR_STATEMENT)
         print(e)
 
+def AI_Read_Multiple_Channels():
+
+    # Need to know how to read on multiple analog inputs
+    # Need to know how to configure correct sample rate for multiple analog inputs
+    # R. Sheehan 25 - 11 - 2025
+
+    FUNC_NAME = ".AO_AI_Loopback_Test()" # use this in exception handling messages
+    ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
+
+    try:
+        from nidaqmx.constants import (TerminalConfiguration)
+
+        AI_SR_MAX = 20000 # max sample rate on single AI channel, units of Hz
+        AO_SR_MAX = 5000 # max sample rate on single AO channel, units of Hz
+
+        # Sample Rate is determined by the number of channels being used
+        # SR per channel = SR / No. Channels
+        # Sample Rate is determined by the terminal configuration
+        # single-ended => readings taken at SR per channel
+        # differential => readings taken on both channels at 0.5 * SR per channel
+
+        # Configure Analog Output
+        ao_task = nidaqmx.Task()
+        ao_chn_str = 'Dev2/ao0:1'
+        ao_task.ao_channels.add_ao_voltage_chan(ao_chn_str, min_val = -10, max_val = +10)
+        ao_task.start()
+        
+        # Configure Analog Input
+        from nidaqmx.constants import (TerminalConfiguration)
+        ai_task = nidaqmx.Task()        
+        ai_chn_str = 'Dev2/ai0:3'
+        ai_task.ai_channels.add_ai_voltage_chan(ai_chn_str, terminal_config=TerminalConfiguration.DIFF, min_val = -10, max_val = +10)               
+        ai_task.start()
+        
+        # output the voltage value
+        voltage = [-5.67, 2.345]
+        ao_task.write(voltage)   
+        print("Set voltage:",voltage," (V)")
+        
+        # read some data
+        N = 21
+        count = 0
+        read_vals = numpy.array([]) # instantiate an empty numpy array
+        while count < N:
+            value = ai_task.read()
+            #read_vals = numpy.append(read_vals, value)
+            print(value)
+            time.sleep(0.5)
+            count += 1
+
+        # reset to zero
+        voltage = numpy.arange(0.0,2)        
+        ao_task.write(voltage)    
+        
+        # close all tasks
+        ao_task.stop()
+        ai_task.stop()
+        
+        ao_task.close()
+        ai_task.close()
+
+    except Exception as e:
+        print(ERR_STATEMENT)
+        print(e)
+
 def main():
     pass
 
@@ -185,4 +254,6 @@ if __name__ == '__main__':
     
     #AI_Read_Test()
     
-    AO_AI_Loopback_Test()
+    #AO_AI_Loopback_Test()
+
+    AI_Read_Multiple_Channels()
