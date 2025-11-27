@@ -7,6 +7,7 @@ from pickle import FALSE
 import sys
 import glob
 import re
+import nidaqmx.constants
 import serial
 import pyvisa
 import time
@@ -185,11 +186,11 @@ def AI_Read_Multiple_Channels():
     # Need to know how to configure correct sample rate for multiple analog inputs
     # R. Sheehan 25 - 11 - 2025
 
-    FUNC_NAME = ".AO_AI_Loopback_Test()" # use this in exception handling messages
+    FUNC_NAME = ".AI_Read_Multiple_Channels()" # use this in exception handling messages
     ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
 
     try:
-        from nidaqmx.constants import TerminalConfiguration, AcquisitionType, READ_ALL_AVAILABLE
+        #from nidaqmx.constants import TerminalConfiguration, AcquisitionType, READ_ALL_AVAILABLE, Edge
 
         AI_SR_MAX = 20000 # max sample rate on single AI channel, units of Hz
         AO_SR_MAX = 5000 # max sample rate on single AO channel, units of Hz
@@ -206,24 +207,26 @@ def AI_Read_Multiple_Channels():
         ao_task = nidaqmx.Task()
         ao_chn_str = 'Dev1/ao0:1'
         ao_task.ao_channels.add_ao_voltage_chan(ao_chn_str, min_val = -10, max_val = +10)
-        ao_SR = Extract_Sample_Rate(ao_chn_str, dev_name)
+        ao_SR, ao_no_ch = Extract_Sample_Rate(ao_chn_str, dev_name)
         #ao_task.timing.cfg_samp_clk_timing(sample_rate, sample_mode = AcquisitionType.FINITE, no_samples = 500)
         ao_task.start()
         
         # Configure Analog Input
-        from nidaqmx.constants import (TerminalConfiguration)
+        #from nidaqmx.constants import (TerminalConfiguration)
         ai_task = nidaqmx.Task()        
         ai_chn_str = 'Dev1/ai0:3'
-        ai_SR = Extract_Sample_Rate(ai_chn_str, dev_name)
-        ai_task.ai_channels.add_ai_voltage_chan(ai_chn_str, terminal_config=TerminalConfiguration.DIFF, min_val = -10, max_val = +10)
-        
+        ai_SR, ai_no_ch = Extract_Sample_Rate(ai_chn_str, dev_name)
+        ai_task.ai_channels.add_ai_voltage_chan(ai_chn_str, terminal_config = nidaqmx.constants.TerminalConfiguration.DIFF, min_val = -10, max_val = +10)
+        ai_task.timing.cfg_samp_clk_timing(ai_SR, sample_mode = nidaqmx.constants.AcquisitionType.FINITE, samps_per_chan = ai_SR>>2, active_edge = nidaqmx.constants.Edge.RISING)
+        # It seems that source = "" chooses the default onboard clock, which afaik is equivalent to SampleTimingType.SAMPLE_CLOCK
         ai_task.start()
 
         # How to assign the SR? 
         #ai_task.timing.cfg_samp_clk_timing(ai_SR, sample_mode = AcquisitionType.FINITE, no_samples = ai_SR)
         
         # output the voltage value
-        voltage = [-5.67, 2.345]
+        #voltage = [-5.67, 2.345]
+        voltage = [5.67, -2.345]
         ao_task.write(voltage)   
         print("Set voltage:",voltage," (V)")
         
@@ -237,6 +240,80 @@ def AI_Read_Multiple_Channels():
             print(value)
             time.sleep(0.5)
             count += 1
+
+        # reset to zero
+        voltage = [0.0, 0.0]        
+        ao_task.write(voltage)    
+        
+        # close all tasks
+        ao_task.stop()
+        ai_task.stop()
+        
+        ao_task.close()
+        ai_task.close()
+
+    except Exception as e:
+        print(ERR_STATEMENT)
+        print(e)
+
+def AI_Read_Multiple_Channels_with_Clock():
+
+    # Need to know how to read on multiple analog inputs
+    # Need to know how to configure correct sample rate for multiple analog inputs
+    # R. Sheehan 27 - 11 - 2025
+
+    FUNC_NAME = ".AI_Read_Multiple_Channels_with_Clock()" # use this in exception handling messages
+    ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
+
+    try:
+        #from nidaqmx.constants import TerminalConfiguration, AcquisitionType, Edge, SampleTimingType
+
+        # for more info on nidaqmx.constants see https://nidaqmx-python.readthedocs.io/en/stable/constants.html#
+
+        AI_SR_MAX = 20000 # max sample rate on single AI channel, units of Hz
+        AO_SR_MAX = 5000 # max sample rate on single AO channel, units of Hz
+
+        # Sample Rate is determined by the number of channels being used
+        # SR per channel = SR / No. Channels
+        # Sample Rate is determined by the terminal configuration
+        # single-ended => readings taken at SR per channel
+        # differential => readings taken on both channels at 0.5 * SR per channel
+
+        dev_name = 'Dev1'
+
+        # Configure Analog Output
+        ao_task = nidaqmx.Task()
+        ao_chn_str = 'Dev1/ao0:1'
+        ao_task.ao_channels.add_ao_voltage_chan(ao_chn_str, min_val = -10, max_val = +10)
+        ao_SR, ao_no_ch = Extract_Sample_Rate(ao_chn_str, dev_name)
+        
+        # Configure Analog Input
+        ai_task = nidaqmx.Task()        
+        ai_chn_str = 'Dev1/ai0:2'
+        ai_SR, ai_no_ch = Extract_Sample_Rate(ai_chn_str, dev_name, True)
+        ai_task.ai_channels.add_ai_voltage_chan(ai_chn_str, terminal_config = nidaqmx.constants.TerminalConfiguration.DIFF, min_val = -10, max_val = +10)
+        ai_task.timing.cfg_samp_clk_timing(ai_SR, sample_mode = nidaqmx.constants.AcquisitionType.FINITE, samps_per_chan = ai_SR>>4, active_edge = nidaqmx.constants.Edge.RISING)
+        # It seems that source = "" chooses the default onboard clock, which afaik is equivalent to nidaqmx.constants.SampleTimingType.SAMPLE_CLOCK
+
+        ao_task.start()
+        ai_task.start()
+        
+        # output the voltage value
+        #voltage = [-5.67, 2.345]
+        voltage = [5.67, -2.345]
+        ao_task.write(voltage)   
+        print("Set voltage:",voltage," (V)")
+        
+        # read some data
+        # documentation for read https://nidaqmx-python.readthedocs.io/en/stable/task.html#nidaqmx.task.InStream.read
+        data = ai_task.read(nidaqmx.constants.READ_ALL_AVAILABLE)
+
+        print("ai SR = ",ai_SR,' Hz => dT = ',1.0 / float(ai_SR),' s')
+        if ai_no_ch == 1:
+            print("samps_per_chan = ",len(data))
+        else:
+            for i in range(0, ai_no_ch, 1):
+                print("samps_per_chan = ",len(data[i]))
 
         # reset to zero
         voltage = [0.0, 0.0]        
@@ -442,7 +519,7 @@ def Extract_Sample_Rate(physical_channel_str, device_name, loud = False):
                 print("Sample Rate:", SR)
                 print()
 
-            return SR
+            return [SR, no_ch]
         else:
             if c1 is FALSE: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in physical_channel_str'
             if c2 is FALSE: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in device_name'
@@ -487,8 +564,10 @@ if __name__ == '__main__':
     
     #AO_AI_Loopback_Test()
 
-    AI_Read_Multiple_Channels()
+    #AI_Read_Multiple_Channels()
 
     #NI_DAQ_String_Hacking()
 
     #NI_DAQ_SR_Extract_Testing()
+
+    AI_Read_Multiple_Channels_with_Clock()
