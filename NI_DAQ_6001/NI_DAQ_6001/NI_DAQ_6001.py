@@ -7,7 +7,6 @@ from pickle import FALSE
 import sys
 import glob
 import re
-import nidaqmx.constants
 import serial
 import pyvisa
 import time
