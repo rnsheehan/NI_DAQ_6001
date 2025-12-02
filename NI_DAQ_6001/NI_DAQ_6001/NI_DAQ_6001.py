@@ -546,6 +546,106 @@ def NI_DAQ_SR_Extract_Testing():
 
     ao_chn_str = 'Dev2/ao0:1'
     Extract_Sample_Rate(ao_chn_str, 'Dev2', True)
+
+def DC_Sweep_Diode():
+
+    # Perform a single channel DC sweep
+    # the kind that's needed to characterise a diode
+    # need to add current amplifier circuit to NI-DAQ output
+    # R. Sheehan 2 - 12 - 2025
+
+    FUNC_NAME = ".DC_Sweep_Diode()" # use this in exception handling messages
+    ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
+
+    try:
+        #from nidaqmx.constants import TerminalConfiguration, AcquisitionType, Edge, SampleTimingType
+
+        # for more info on nidaqmx.constants see https://nidaqmx-python.readthedocs.io/en/stable/constants.html#
+
+        AI_SR_MAX = 20000 # max sample rate on single AI channel, units of Hz
+        AO_SR_MAX = 5000 # max sample rate on single AO channel, units of Hz
+
+        # Sample Rate is determined by the number of channels being used
+        # SR per channel = SR / No. Channels
+        # Sample Rate is determined by the terminal configuration
+        # single-ended => readings taken at SR per channel
+        # differential => readings taken on both channels at 0.5 * SR per channel
+
+        dev_name = 'Dev2'
+
+        # Configure Analog Output
+        ao_task = nidaqmx.Task()
+        ao_chn_str = dev_name + '/ao0:1'
+        ao_task.ao_channels.add_ao_voltage_chan(ao_chn_str, min_val = -10, max_val = +10)
+        ao_SR, ao_no_ch = Extract_Sample_Rate(ao_chn_str, dev_name)
+        
+        # Configure Analog Input
+        ai_task = nidaqmx.Task()        
+        ai_chn_str = dev_name + '/ai0:3'
+        ai_SR, ai_no_ch = Extract_Sample_Rate(ai_chn_str, dev_name)
+        ai_task.ai_channels.add_ai_voltage_chan(ai_chn_str, terminal_config = nidaqmx.constants.TerminalConfiguration.DIFF, min_val = -10, max_val = +10)
+        ai_task.timing.cfg_samp_clk_timing(ai_SR, sample_mode = nidaqmx.constants.AcquisitionType.FINITE, samps_per_chan = ai_SR, 
+                                           active_edge = nidaqmx.constants.Edge.RISING)
+        
+        ao_task.start()
+        ai_task.start()
+        
+        # reset to zero
+        # voltage = [0.0, 0.0]      
+        # ao_task.write(voltage)
+        # time.sleep(0.5)
+
+        # perform the DC sweep, assumes that current amplifier is in place
+        Vlow = 0.0
+        Vhigh = 3.0
+        dV = 0.5;
+        Rs = 10.1 / 1000.0 # sense resistance in units of kOhm
+
+        # reset to zero
+        voltage = [1.0, 0.0]      
+        ao_task.write(voltage)
+        time.sleep(1.0)
+
+        # read some data
+        # N = 21
+        # count = 0
+        # read_vals = numpy.array([]) # instantiate an empty numpy array
+        # while count < N:
+        #     value = ai_task.read()
+        #     #read_vals = numpy.append(read_vals, value)
+        #     print(value)
+        #     time.sleep(0.5)
+        #     count += 1
+
+        # possible issue with how multiple sequential reads to be performed
+        # might need to stop / start task with each read
+        #data = ai_task.read(nidaqmx.constants.READ_ALL_AVAILABLE)
+        data = ai_task.read(ai_SR>>1)
+
+        print("no. meas taken per channel: ",len(data[0]))
+        for i in range(0, ai_no_ch, 1):
+            avg = numpy.mean(data[i])
+            stdev = numpy.std(data[i], ddof = 1)
+            print("ai%(v1)d: %(v2)0.5f +/- %(v3)0.5f (V)"%{"v1":i, "v2":avg, "v3":stdev})
+        print()
+        Ival = numpy.mean(data[1]) / Rs
+        Vval = numpy.mean(data[2])
+        print("Diode Current: %(v1)0.3f (mA), Diode Voltage: %(v2)0.3f (V)"%{"v1":Ival, "v2":Vval})
+
+        # reset to zero
+        voltage = [0.0, 0.0]
+        ao_task.write(voltage)    
+        
+        # close all tasks
+        ao_task.stop()
+        ai_task.stop()
+        
+        ao_task.close()
+        ai_task.close()
+
+    except Exception as e:
+        print(ERR_STATEMENT)
+        print(e)
     
 def main():
     pass
@@ -569,4 +669,6 @@ if __name__ == '__main__':
 
     #NI_DAQ_SR_Extract_Testing()
 
-    AI_Read_Multiple_Channels_with_Clock()
+    #AI_Read_Multiple_Channels_with_Clock()
+
+    DC_Sweep_Diode()
