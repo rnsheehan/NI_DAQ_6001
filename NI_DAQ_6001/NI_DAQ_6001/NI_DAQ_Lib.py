@@ -1,7 +1,6 @@
 """
 Python library for interfacing to the NI-DAQ USB-600x
 
-
 R. Sheehan 21 - 11 - 2025
 """
 
@@ -18,12 +17,10 @@ R. Sheehan 21 - 11 - 2025
 # R. Sheehan 3 - 12 - 2025
 
 # import required libraries
-import os
 import re
 import numpy
 import time
 import nidaqmx
-import Plotting
 import Sweep_Interval
 
 MOD_NAME_STR = "NI_DAQ_Lib"
@@ -489,6 +486,21 @@ def DC_Sweep_Diode_Test():
     except Exception as e:
         print(ERR_STATEMENT)
         print(e)
+
+def AO_AI_Waveform_Write_Read_Test():
+    """
+    Configure AO to write some waveform with some frequency and amplitude
+    Configure AI to read the waveform and generate a plot of the data
+
+    R. Sheehan 3 - 12 - 2025
+    """
+
+    # Go through the github examples and extract out what you need
+    # It works the same way as it does in LabVIEW
+    # You generate a waveform of amplitudes assuming a certain sample rate and deltaT
+    # AO can then generate the waveform as required, exither continuously or finitely
+
+    pass
 
 # Actual routines that you would want with a DAQ
 
