@@ -203,9 +203,6 @@ def AI_Read_Multiple_Channels_Test():
     try:
         #from nidaqmx.constants import TerminalConfiguration, AcquisitionType, READ_ALL_AVAILABLE, Edge
 
-        AI_SR_MAX = 20000 # max sample rate on single AI channel, units of Hz
-        AO_SR_MAX = 5000 # max sample rate on single AO channel, units of Hz
-
         # Sample Rate is determined by the number of channels being used
         # SR per channel = SR / No. Channels
         # Sample Rate is determined by the terminal configuration
@@ -283,9 +280,6 @@ def AI_Read_Multiple_Channels_with_Clock_Test():
         #from nidaqmx.constants import TerminalConfiguration, AcquisitionType, Edge, SampleTimingType
 
         # for more info on nidaqmx.constants see https://nidaqmx-python.readthedocs.io/en/stable/constants.html#
-
-        AI_SR_MAX = 20000 # max sample rate on single AI channel, units of Hz
-        AO_SR_MAX = 5000 # max sample rate on single AO channel, units of Hz
 
         # Sample Rate is determined by the number of channels being used
         # SR per channel = SR / No. Channels
@@ -527,9 +521,6 @@ def Extract_Sample_Rate(physical_channel_str, device_name, loud = False):
         c10 = c1 and c2
 
         if c10:
-            AI_SR_MAX = 20000 # max sample rate on single AI channel, units of Hz
-            AO_SR_MAX = 5000 # max sample rate on single AO channel, units of Hz
-
             SR_MAX = AI_SR_MAX if 'i' in physical_channel_str else AO_SR_MAX
             
             reduced_str = physical_channel_str.replace( device_name+'/', '' ) # strip out the device_name from the physical_channel_str
@@ -606,6 +597,7 @@ def AI_Monitor(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev2', loud =
         if c10:
             # Extract the sample rate per channel
             ai_chn_str = physical_channel_str
+
             ai_SR, ai_no_ch = Extract_Sample_Rate(ai_chn_str, device_name)
 
             # Configure Analog Input
@@ -621,6 +613,7 @@ def AI_Monitor(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev2', loud =
             ai_task.timing.cfg_samp_clk_timing(ai_SR, sample_mode = nidaqmx.constants.AcquisitionType.FINITE, 
                                                samps_per_chan = ai_SR>>1, active_edge = nidaqmx.constants.Edge.RISING)
 
+            # AI Channel Monitoring
 
 
             # Close off the ai_task
