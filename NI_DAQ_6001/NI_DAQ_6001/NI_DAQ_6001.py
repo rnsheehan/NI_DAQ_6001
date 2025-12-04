@@ -217,7 +217,7 @@ def Making_Waves():
         
         Plotting.plot_multiple_curves([[t_vals, w_vals], [t_vals, ww_vals]], args)
 
-    PLOT_PULSE_WAVE = False
+    PLOT_PULSE_WAVE = True
     if PLOT_PULSE_WAVE:
         
         nu = 3 # frequency in units of Hz
@@ -253,16 +253,15 @@ def Making_Waves():
         
         Plotting.plot_multiple_curves([[t_vals, w_vals], [t_vals, ww_vals]], args)
 
-    PLOT_TRIANGLE_WAVE = True
+    PLOT_TRIANGLE_WAVE = False
     if PLOT_TRIANGLE_WAVE:
         nu = 3 # frequency in units of Hz
-        n_smpls = AI_SR_MAX # no. of samples
         amp = 1.0 # wave amplitude
         phase = 0.0 # phase offset
         t0 = 0.0
 
-        timeInt, ww_vals = NI_DAQ_Lib.Generate_Sine_Waveform(AO_SR_MAX, AO_SR_MAX, t0, nu, amp, phase)
-        timeInt, w_vals = NI_DAQ_Lib.Generate_Triangle_Waveform(AO_SR_MAX, AO_SR_MAX, t0, nu, amp, phase, pulsed = False)
+        timeInt, ww_vals = NI_DAQ_Lib.Generate_Sine_Waveform(AO_SR_MAX>>1, AO_SR_MAX>>1, t0, nu, amp, phase)
+        timeInt, w_vals = NI_DAQ_Lib.Generate_Triangle_Waveform(AO_SR_MAX>>1, AO_SR_MAX>>1, t0, nu, amp, phase, pulsed = True)
         t_vals, dT_AO = numpy.linspace(timeInt.start, timeInt.stop, timeInt.Nsteps, endpoint = True, retstep = True)
 
         # generate a plot
@@ -297,7 +296,7 @@ if __name__ == '__main__':
 
     print(pwd)
     
-    Making_Waves()
+    #Making_Waves()
 
     #NI_DAQ_Lib.AO_Write_Test()
     
@@ -314,3 +313,5 @@ if __name__ == '__main__':
     #NI_DAQ_Lib.AI_Read_Multiple_Channels_with_Clock()
 
     #NI_DAQ_Lib.DC_Sweep_Diode()
+
+    NI_DAQ_Lib.AO_Waveform_Write_Test()

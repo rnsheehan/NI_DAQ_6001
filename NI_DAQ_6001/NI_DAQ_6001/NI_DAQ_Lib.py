@@ -17,12 +17,21 @@ R. Sheehan 21 - 11 - 2025
 # R. Sheehan 3 - 12 - 2025
 
 # import required libraries
+import os
+
+import nitypes.waveform
+
+os.environ["NIDAQMX_ENABLE_WAVEFORM_SUPPORT"] = "1"
+
 import re
 import math
 import numpy
 import time
 import nidaqmx
+import nitypes
+import datetime
 import Sweep_Interval
+import Plotting
 
 MOD_NAME_STR = "NI_DAQ_Lib"
 AI_SR_MAX = 20000 # max sample rate on single AI channel, units of Hz
@@ -501,7 +510,131 @@ def AO_AI_Waveform_Write_Read_Test():
     # You generate a waveform of amplitudes assuming a certain sample rate and deltaT
     # AO can then generate the waveform as required, exither continuously or finitely
 
-    pass
+    FUNC_NAME = ".AO_AI_Waveform_Write_Read_Test()" # use this in exception handling messages
+    ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
+
+    try:
+        dev_name = 'Dev2'
+
+        # Configure the Analog Output
+        ao_task = nidaqmx.Task()
+        ao_chn_str = dev_name + '/ao0'
+        ao_task.ao_channels.add_ao_voltage_chan(ao_chn_str, min_val = -10, max_val = +10)
+        ao_SR, ao_no_ch = Extract_Sample_Rate(ao_chn_str, dev_name)
+        ao_task.timing.cfg_samp_clk_timing(rate = ao_SR, sample_mode = nidaqmx.constants.AcquisitionType.FINITE, 
+                                           samps_per_chan = ao_SR, active_edge = nidaqmx.constants.Edge.RISING)
+
+        nu = 3 # frequency in units of Hz
+        two_pi_nu = 2.0 * math.pi * nu
+        amp = 1.0 # wave amplitude
+        phase = 0.0
+        t0 = 0.0
+        timeInt, w_vals = Generate_Sine_Waveform(ao_SR, ao_SR, t0, nu, amp, phase)
+
+        # https://nitypes.readthedocs.io/en/latest/autoapi/nitypes/waveform/index.html
+        # https://nitypes.readthedocs.io/en/latest/autoapi/nitypes/waveform/Timing.html
+        waveform = nitypes.waveform.AnalogWaveform(sample_count = ao_SR, 
+                                                   timing = nitypes.waveform.Timing.create_with_regular_interval(
+                                                       datetime.timedelta(seconds = timeInt.delta) 
+                                                       ) 
+                                                   )
+        #waveform.raw_data[:] = w_vals
+        waveform = waveform.from_array_1d(w_vals)
+        waveform.units = "Volts"
+
+        # Write the waveform
+        
+        number_of_samples_written = ao_task.write(waveform, auto_start=True)
+        print(f"Generating {number_of_samples_written} voltage samples.")
+        ao_task.wait_until_done()
+        ao_task.stop()
+
+        # Configure Analog Input
+        ai_task = nidaqmx.Task()        
+        ai_chn_str = dev_name + '/ai0'
+        ai_SR, ai_no_ch = Extract_Sample_Rate(ai_chn_str, dev_name)
+        ai_task.ai_channels.add_ai_voltage_chan(ai_chn_str, terminal_config = nidaqmx.constants.TerminalConfiguration.DIFF, 
+                                                min_val = -10, max_val = +10)
+        ai_task.timing.cfg_samp_clk_timing(ai_SR, sample_mode = nidaqmx.constants.AcquisitionType.FINITE, 
+                                           samps_per_chan = ai_SR, active_edge = nidaqmx.constants.Edge.RISING)
+        
+        # Read the waveform
+        ai_task.start()
+        data = ai_task.read(nidaqmx.constants.READ_ALL_AVAILABLE)
+        #data=ai_task.read_waveform()
+        ai_task.stop()        
+
+        #print("N_samples read:",len(data))
+
+        print(f"Acquired data: {data.scaled_data}")
+        print(f"Channel name: {data.channel_name}")
+        print(f"Units: {data.units}")
+        print(f"t0: {data.timing.start_time}")
+        print(f"dt: {data.timing.sample_interval}")
+
+        # close all tasks
+        ao_task.close()
+        ai_task.close()
+
+        # Make a plot of the data that has been read
+        # t_vals, dT_AO = numpy.linspace(timeInt.start, timeInt.stop, ai_SR, endpoint = True, retstep = True)
+
+        # args = Plotting.plot_arg_single()
+
+        # args.loud = True
+        # args.x_label = 'Time (s)'
+        # args.y_label = 'Sine Wave'
+        # args.marker = Plotting.labs_lins[3]
+        # #args.plt_title = r'N$_{smpls}$ = %(v1)d, $\delta$t = %(v2)0.3f (ms)'%{"v1":len(t_vals), "v2":1000.0*dT_AO}
+
+        # Plotting.plot_single_curve(t_vals, data, args)
+
+    except Exception as e:
+        print(ERR_STATEMENT)
+        print(e)
+
+def AO_Waveform_Write_Test():
+
+     with nidaqmx.Task() as task:
+        sampling_rate = 1000.0
+        number_of_samples = 1000
+        task.ao_channels.add_ao_voltage_chan("Dev2/ao0", min_val = -10, max_val = +10)
+        #task.timing.cfg_samp_clk_timing(sampling_rate, sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS)
+        task.timing.cfg_samp_clk_timing(rate = sampling_rate, sample_mode = nidaqmx.constants.AcquisitionType.CONTINUOUS, 
+                                           samps_per_chan = number_of_samples, active_edge = nidaqmx.constants.Edge.RISING)
+
+        actual_sampling_rate = task.timing.samp_clk_rate
+        print(f"Actual sampling rate: {actual_sampling_rate:g} S/s")
+
+        nu = 10 # frequency in units of Hz
+        two_pi_nu = 2.0 * math.pi * nu
+        amp = 5.0 # wave amplitude
+        phase = 0.0
+        t0 = 0.0
+        timeInt, data = Generate_Sine_Waveform(sampling_rate, number_of_samples, t0, nu, amp, phase)
+        
+        task.write(data)
+        task.start()
+
+        input("Generating voltage continuously. Press Enter to stop.\n")
+
+        task.stop()
+
+        #task.close()
+
+    # with nidaqmx.Task() as task:
+    #     total_samples = 1000
+    #     task.ao_channels.add_ao_voltage_chan("Dev2/ao0")
+    #     task.timing.cfg_samp_clk_timing(1000.0, sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS, samps_per_chan=total_samples)
+
+    #     waveform = nitypes.waveform.AnalogWaveform(sample_count=total_samples)
+    #     waveform.raw_data[:] = [5.0 * i / total_samples for i in range(total_samples)]
+    #     waveform.units = "Volts"
+
+    #     number_of_samples_written = task.write(waveform, auto_start=True)
+    #     print(f"Generating {number_of_samples_written} voltage samples.")
+    #     task.wait_until_done()
+    #     task.stop()
 
 # Actual routines that you would want with a DAQ
 
@@ -571,6 +704,7 @@ def Generate_Square_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency = 1
     frequency(float) in units of Hz
     amplitude(float) in units of volt in range [-10, 10]
     phase(float) is dimensionless
+    pulsed(boolean) decides whether or not to output non-negative pulses
 
     Output is a tuple with the following items
     timeInterval(SweepSpace object) that contains the data needed to generate time samples using numpy.linspace
@@ -637,6 +771,7 @@ def Generate_Triangle_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency =
     frequency(float) in units of Hz
     amplitude(float) in units of volt in range [-10, 10]
     phase(float) is dimensionless
+    pulsed(boolean) decides whether or not to output non-negative pulses
 
     Output is a tuple with the following items
     timeInterval(SweepSpace object) that contains the data needed to generate time samples using numpy.linspace
