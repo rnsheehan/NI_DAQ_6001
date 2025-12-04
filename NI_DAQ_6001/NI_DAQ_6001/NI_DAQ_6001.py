@@ -4,7 +4,10 @@
 from ast import Try, TryStar
 import os
 from pickle import FALSE
+import math
+import numpy
 import NI_DAQ_Lib
+import Plotting
 
 # The aim of this script is to establish comms with NI-DAQ USB 6001
 # Official Documentation: https://nidaqmx-python.readthedocs.io/en/stable/
@@ -146,6 +149,144 @@ def NI_DAQ_SR_Extract_Testing():
     ao_chn_str = 'Dev2/ao0:1'
     NI_DAQ_Lib.Extract_Sample_Rate(ao_chn_str, 'Dev2', True)
 
+def Making_Waves():
+
+    # Ensure that you can make some waves with specific frequencies and sample rates
+    # R. Sheehan 4 - 12 -  2025
+
+    AI_SR_MAX = 20000 # max sample rate on single AI channel, units of Hz
+    AO_SR_MAX = 5000 # max sample rate on single AO channel, units of Hz
+    dT_AO = 1.0 / AO_SR_MAX
+
+    PLOT_SINE_WAVE = False
+    if PLOT_SINE_WAVE:
+        
+        nu = 3 # frequency in units of Hz
+        two_pi_nu = 2.0 * math.pi * nu
+        amp = 1.0 # wave amplitude
+        phase = 0.0
+        t0 = 0.0
+
+        timeInt, w_vals = NI_DAQ_Lib.Generate_Sine_Waveform(AO_SR_MAX, AO_SR_MAX, t0, nu, amp, phase)
+        t_vals, dT_AO = numpy.linspace(timeInt.start, timeInt.stop, timeInt.Nsteps, endpoint = True, retstep = True)
+
+        # generate a plot
+        args = Plotting.plot_arg_single()
+
+        args.loud = True
+        args.x_label = 'Time (s)'
+        args.y_label = 'Sine Wave'
+        args.marker = Plotting.labs_lins[3]
+        args.plt_title = r'N$_{smpls}$ = %(v1)d, $\delta$t = %(v2)0.3f (ms)'%{"v1":len(t_vals), "v2":1000.0*dT_AO}
+
+        Plotting.plot_single_curve(t_vals, w_vals, args)
+
+    PLOT_SQUARE_WAVE = False
+    if PLOT_SQUARE_WAVE:
+        
+        nu = 3 # frequency in units of Hz
+        n_smpls = AI_SR_MAX # no. of samples
+        two_pi_nu = 2.0 * math.pi * nu
+        amp = 1.0 # wave amplitude
+        phase = 0.0 # phase offset
+        t0 = 0.0
+
+        timeInt, ww_vals = NI_DAQ_Lib.Generate_Sine_Waveform(AO_SR_MAX, AO_SR_MAX, t0, nu, amp, phase)
+        timeInt, w_vals = NI_DAQ_Lib.Generate_Square_Waveform(AO_SR_MAX, AO_SR_MAX, t0, nu, amp, phase)
+        t_vals, dT_AO = numpy.linspace(timeInt.start, timeInt.stop, timeInt.Nsteps, endpoint = True, retstep = True)
+
+        # generate a plot
+        # args = Plotting.plot_arg_single()
+
+        # args.loud = True
+        # args.x_label = 'Time (s)'
+        # args.y_label = 'Square Wave'
+        # args.marker = Plotting.labs_lins[3]
+        # args.plt_title = r'N$_{smpls}$ = %(v1)d, $\delta$t = %(v2)0.3f (ms)'%{"v1":len(t_vals), "v2":1000.0*dT_AO}
+
+        # Plotting.plot_single_curve(t_vals, w_vals, args)
+
+        args = Plotting.plot_arg_multiple()
+
+        args.loud = True
+        args.x_label = 'Time (s)'
+        args.y_label = 'Square Wave'
+        args.crv_lab_list = ['Square', 'Sine']
+        args.mrk_list = [Plotting.labs_lins[3], Plotting.labs_lins[4]]
+        args.plt_title = r'N$_{smpls}$ = %(v1)d, $\delta$t = %(v2)0.3f (ms)'%{"v1":len(t_vals), "v2":1000.0*dT_AO}
+        
+        Plotting.plot_multiple_curves([[t_vals, w_vals], [t_vals, ww_vals]], args)
+
+    PLOT_PULSE_WAVE = False
+    if PLOT_PULSE_WAVE:
+        
+        nu = 3 # frequency in units of Hz
+        n_smpls = AI_SR_MAX # no. of samples
+        two_pi_nu = 2.0 * math.pi * nu
+        amp = 1.0 # wave amplitude
+        phase = 0.0 # phase offset
+        t0 = 0.0
+
+        timeInt, ww_vals = NI_DAQ_Lib.Generate_Sine_Waveform(AO_SR_MAX, AO_SR_MAX, t0, nu, amp, phase)
+        timeInt, w_vals = NI_DAQ_Lib.Generate_Square_Waveform(AO_SR_MAX, AO_SR_MAX, t0, nu, amp, phase, pulsed = True)
+        t_vals, dT_AO = numpy.linspace(timeInt.start, timeInt.stop, timeInt.Nsteps, endpoint = True, retstep = True)
+
+        # generate a plot
+        # args = Plotting.plot_arg_single()
+
+        # args.loud = True
+        # args.x_label = 'Time (s)'
+        # args.y_label = 'Pulse Wave'
+        # args.marker = Plotting.labs_lins[3]
+        # args.plt_title = r'N$_{smpls}$ = %(v1)d, $\delta$t = %(v2)0.3f (ms)'%{"v1":len(t_vals), "v2":1000.0*dT_AO}
+
+        # Plotting.plot_single_curve(t_vals, w_vals, args)
+
+        args = Plotting.plot_arg_multiple()
+
+        args.loud = True
+        args.x_label = 'Time (s)'
+        args.y_label = 'Pulse Wave'
+        args.crv_lab_list = ['Pulse', 'Sine']
+        args.mrk_list = [Plotting.labs_lins[3], Plotting.labs_lins[4]]
+        args.plt_title = r'N$_{smpls}$ = %(v1)d, $\delta$t = %(v2)0.3f (ms)'%{"v1":len(t_vals), "v2":1000.0*dT_AO}
+        
+        Plotting.plot_multiple_curves([[t_vals, w_vals], [t_vals, ww_vals]], args)
+
+    PLOT_TRIANGLE_WAVE = True
+    if PLOT_TRIANGLE_WAVE:
+        nu = 3 # frequency in units of Hz
+        n_smpls = AI_SR_MAX # no. of samples
+        amp = 1.0 # wave amplitude
+        phase = 0.0 # phase offset
+        t0 = 0.0
+
+        timeInt, ww_vals = NI_DAQ_Lib.Generate_Sine_Waveform(AO_SR_MAX, AO_SR_MAX, t0, nu, amp, phase)
+        timeInt, w_vals = NI_DAQ_Lib.Generate_Triangle_Waveform(AO_SR_MAX, AO_SR_MAX, t0, nu, amp, phase, pulsed = False)
+        t_vals, dT_AO = numpy.linspace(timeInt.start, timeInt.stop, timeInt.Nsteps, endpoint = True, retstep = True)
+
+        # generate a plot
+        # args = Plotting.plot_arg_single()
+
+        # args.loud = True
+        # args.x_label = 'Time (s)'
+        # args.y_label = 'Pulse Wave'
+        # args.marker = Plotting.labs_lins[3]
+        # args.plt_title = r'N$_{smpls}$ = %(v1)d, $\delta$t = %(v2)0.3f (ms)'%{"v1":len(t_vals), "v2":1000.0*dT_AO}
+
+        # Plotting.plot_single_curve(t_vals, w_vals, args)
+
+        args = Plotting.plot_arg_multiple()
+
+        args.loud = True
+        args.x_label = 'Time (s)'
+        args.y_label = 'Triangle Wave'
+        args.crv_lab_list = ['Triangle', 'Sine']
+        args.mrk_list = [Plotting.labs_lins[3], Plotting.labs_lins[4]]
+        args.plt_title = r'N$_{smpls}$ = %(v1)d, $\delta$t = %(v2)0.3f (ms)'%{"v1":len(t_vals), "v2":1000.0*dT_AO}
+        
+        Plotting.plot_multiple_curves([[t_vals, w_vals], [t_vals, ww_vals]], args)    
+
 def main():
     pass
 
@@ -156,9 +297,11 @@ if __name__ == '__main__':
 
     print(pwd)
     
+    Making_Waves()
+
     #NI_DAQ_Lib.AO_Write_Test()
     
-    NI_DAQ_Lib.AI_Read_Test()
+    #NI_DAQ_Lib.AI_Read_Test()
     
     #NI_DAQ_Lib.AO_AI_Loopback_Test()
 

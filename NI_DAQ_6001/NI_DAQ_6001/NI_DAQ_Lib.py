@@ -18,6 +18,7 @@ R. Sheehan 21 - 11 - 2025
 
 # import required libraries
 import re
+import math
 import numpy
 import time
 import nidaqmx
@@ -503,6 +504,193 @@ def AO_AI_Waveform_Write_Read_Test():
     pass
 
 # Actual routines that you would want with a DAQ
+
+def Generate_Sine_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency = 1.0, amplitude = 1.0, phase = 0.0):
+    """
+    Generate a sine waveform
+
+    Inputs
+    sample_rate(int) and no_smpls(int) to be determined by NI-DAQ AO
+    t_start(float) time at which sine wave must start in units of second
+    frequency(float) in units of Hz
+    amplitude(float) in units of volt in range [-10, 10]
+    phase(float) is dimensionless
+
+    Output is a tuple with the following items
+    timeInterval(SweepSpace object) that contains the data needed to generate time samples using numpy.linspace
+    w_vals(float numpy array) contains sine waveform values
+
+    R. Sheehan 4 - 12 - 2025
+    """
+    
+    FUNC_NAME = ".Generate_Sine_Waveform()" # use this in exception handling messages
+    ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
+
+    try:
+        c1 = True if sample_rate > 0 else False
+        c2 = True if no_smpls > 0 else False
+        c3 = True if frequency > 0 else False
+        c4 = True if math.fabs(amplitude) <= 10 else False
+        c10 = c1 and c2 and c3 and c4
+
+        if c10:
+            deltaT = ( 1.0 / float(sample_rate) )
+            t0 = t_start
+            two_pi_nu = 2.0 * math.pi * frequency
+            t_vals = numpy.array([]) # instantiate an empty numpy array
+            w_vals = numpy.array([]) # instantiate an empty numpy array
+            count = 0
+            while count < no_smpls:
+                sval = amplitude * math.sin(two_pi_nu * t0 + phase)
+                w_vals = numpy.append(w_vals, sval )
+                t0 += deltaT
+                count += 1
+
+            # instantiate a SweepSpace object to enable time samples to be generated later using 
+            # numpy.linspace(timeInterval.start, timeInterval.stop, timeInterval.Nsteps, endpoint=True, retstep=True)
+            timeInterval = Sweep_Interval.SweepSpace(no_smpls, t_start, t0)
+            
+            return (timeInterval, w_vals)
+        else:
+            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nsample_rate is negative'
+            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nno_smpls is negative'
+            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nfrequency is negative'
+            if c4 is False: ERR_STATEMENT = ERR_STATEMENT + '\namplitude is out of range for NI-DAQ'
+            raise Exception
+    except Exception as e:
+        print(ERR_STATEMENT)
+        print(e)
+
+def Generate_Square_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency = 1.0, amplitude = 1.0, phase = 0.0, pulsed = False):
+    """
+    Generate a square waveform
+
+    Inputs
+    sample_rate(int) and no_smpls(int) to be determined by NI-DAQ AO
+    t_start(float) time at which square wave must start in units of second
+    frequency(float) in units of Hz
+    amplitude(float) in units of volt in range [-10, 10]
+    phase(float) is dimensionless
+
+    Output is a tuple with the following items
+    timeInterval(SweepSpace object) that contains the data needed to generate time samples using numpy.linspace
+    w_vals(float numpy array) contains square waveform values
+
+    R. Sheehan 4 - 12 - 2025
+    """
+
+    # notes on square waves
+    # https://en.wikipedia.org/wiki/Square_wave_(waveform)
+    # https://mathworld.wolfram.com/SquareWave.html
+    
+    FUNC_NAME = ".Generate_Square_Waveform()" # use this in exception handling messages
+    ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
+
+    try:
+        c1 = True if sample_rate > 0 else False
+        c2 = True if no_smpls > 0 else False
+        c3 = True if frequency > 0 else False
+        c4 = True if math.fabs(amplitude) <= 10 else False
+        c10 = c1 and c2 and c3 and c4
+
+        if c10:
+            deltaT = ( 1.0 / float(sample_rate) )
+            t0 = t_start
+            two_pi_nu = 2.0 * math.pi * frequency
+            t_vals = numpy.array([]) # instantiate an empty numpy array
+            w_vals = numpy.array([]) # instantiate an empty numpy array
+            count = 0
+            while count < no_smpls:
+                sval = math.sin(two_pi_nu * t0 + phase)
+                # python does not have a built-in signum function, but it does have copysign which can be used
+                # copysign(x,y): Return x with the sign of y
+                val = math.copysign(amplitude, sval) # sq wave = signum (sine wave)
+                if pulsed:
+                    w_vals = numpy.append(w_vals, val if val > 0.0 else 0.0 ) # only want positive portion of sq wave
+                else:
+                    w_vals = numpy.append(w_vals, val)
+                t0 += deltaT
+                count += 1
+
+            # instantiate a SweepSpace object to enable time samples to be generated later using 
+            # numpy.linspace(timeInterval.start, timeInterval.stop, timeInterval.Nsteps, endpoint=True, retstep=True)
+            timeInterval = Sweep_Interval.SweepSpace(no_smpls, t_start, t0)
+            
+            return (timeInterval, w_vals)
+        else:
+            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nsample_rate is negative'
+            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nno_smpls is negative'
+            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nfrequency is negative'
+            if c4 is False: ERR_STATEMENT = ERR_STATEMENT + '\namplitude is out of range for NI-DAQ'
+            raise Exception
+    except Exception as e:
+        print(ERR_STATEMENT)
+        print(e)
+
+def Generate_Triangle_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency = 1.0, amplitude = 1.0, phase = 0.0, pulsed = False):
+    """
+    Generate a triangle waveform
+
+    Inputs
+    sample_rate(int) and no_smpls(int) to be determined by NI-DAQ AO
+    t_start(float) time at which triangle wave must start in units of second
+    frequency(float) in units of Hz
+    amplitude(float) in units of volt in range [-10, 10]
+    phase(float) is dimensionless
+
+    Output is a tuple with the following items
+    timeInterval(SweepSpace object) that contains the data needed to generate time samples using numpy.linspace
+    w_vals(float numpy array) contains triangle waveform values
+
+    R. Sheehan 4 - 12 - 2025
+    """
+
+    # notes on triangular wave
+    # https://en.wikipedia.org/wiki/Triangle_wave
+    # https://mathworld.wolfram.com/TriangleWave.html
+    
+    FUNC_NAME = ".Generate_Pulse_Waveform()" # use this in exception handling messages
+    ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
+
+    try:
+        c1 = True if sample_rate > 0 else False
+        c2 = True if no_smpls > 0 else False
+        c3 = True if frequency > 0 else False
+        c4 = True if math.fabs(amplitude) <= 10 else False
+        c10 = c1 and c2 and c3 and c4
+
+        if c10:
+            deltaT = ( 1.0 / float(sample_rate) )
+            t0 = t_start
+            two_pi_nu = 2.0 * math.pi * frequency
+            amp = (2.0 * amplitude) / math.pi
+            t_vals = numpy.array([]) # instantiate an empty numpy array
+            w_vals = numpy.array([]) # instantiate an empty numpy array
+            count = 0
+            while count < no_smpls:
+                sval = math.sin(two_pi_nu * t0 + phase)
+                val = amp * math.asin( sval )
+                if pulsed:
+                    w_vals = numpy.append(w_vals, math.fabs(val) ) # convert to triangular pulses by taking math.fabs(val)
+                else:
+                    w_vals = numpy.append(w_vals, val )
+                t0 += deltaT
+                count += 1
+
+            # instantiate a SweepSpace object to enable time samples to be generated later using 
+            # numpy.linspace(timeInterval.start, timeInterval.stop, timeInterval.Nsteps, endpoint=True, retstep=True)
+            timeInterval = Sweep_Interval.SweepSpace(no_smpls, t_start, t0)
+            
+            return (timeInterval, w_vals)
+        else:
+            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nsample_rate is negative'
+            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nno_smpls is negative'
+            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nfrequency is negative'
+            if c4 is False: ERR_STATEMENT = ERR_STATEMENT + '\namplitude is out of range for NI-DAQ'
+            raise Exception
+    except Exception as e:
+        print(ERR_STATEMENT)
+        print(e)
 
 def Extract_Sample_Rate(physical_channel_str, device_name, loud = False):
     """
