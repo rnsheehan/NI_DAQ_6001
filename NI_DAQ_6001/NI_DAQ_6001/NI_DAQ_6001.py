@@ -314,4 +314,4 @@ if __name__ == '__main__':
 
     #NI_DAQ_Lib.DC_Sweep_Diode()
 
-    NI_DAQ_Lib.AO_Waveform_Write_Test()
+    NI_DAQ_Lib.AI_Waveform_Read_Test()

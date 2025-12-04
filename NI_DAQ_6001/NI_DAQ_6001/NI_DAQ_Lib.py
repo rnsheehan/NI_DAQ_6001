@@ -30,6 +30,7 @@ import time
 import nidaqmx
 import nitypes
 import datetime
+import matplotlib.pyplot as plot
 import Sweep_Interval
 import Plotting
 
@@ -635,6 +636,32 @@ def AO_Waveform_Write_Test():
     #     print(f"Generating {number_of_samples_written} voltage samples.")
     #     task.wait_until_done()
     #     task.stop()
+
+def AI_Waveform_Read_Test():
+
+    # This seems to work well enough
+
+    with nidaqmx.Task() as task:
+        SR = AI_SR_MAX
+        dT = 1.0 / float(SR)
+        n_samples = AI_SR_MAX
+        task.ai_channels.add_ai_voltage_chan("Dev1/ai0")
+        task.timing.cfg_samp_clk_timing(rate = SR, sample_mode=nidaqmx.constants.AcquisitionType.FINITE, samps_per_chan=n_samples)
+
+        waveform = task.read(nidaqmx.constants.READ_ALL_AVAILABLE)
+        t0 = 0.0
+        tf = t0 + n_samples * dT
+        times = numpy.arange(t0, tf, dT)
+        
+        plot.plot(times, waveform)
+        # plot.xlabel("Seconds")
+        # plot.ylabel(waveform.units)
+        # plot.title(waveform.channel_name)
+        plot.grid(True)
+
+        plot.show()
+
+        task.stop()
 
 # Actual routines that you would want with a DAQ
 
