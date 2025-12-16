@@ -596,46 +596,82 @@ def AO_AI_Waveform_Write_Read_Test():
 
 def AO_Waveform_Write_Test():
 
-     with nidaqmx.Task() as task:
-        sampling_rate = 1000.0
-        number_of_samples = 1000
-        task.ao_channels.add_ao_voltage_chan("Dev2/ao0", min_val = -10, max_val = +10)
-        #task.timing.cfg_samp_clk_timing(sampling_rate, sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS)
-        task.timing.cfg_samp_clk_timing(rate = sampling_rate, sample_mode = nidaqmx.constants.AcquisitionType.CONTINUOUS, 
-                                           samps_per_chan = number_of_samples, active_edge = nidaqmx.constants.Edge.RISING)
+    # Use the analog output to write a waveform to the output stream
 
-        actual_sampling_rate = task.timing.samp_clk_rate
-        print(f"Actual sampling rate: {actual_sampling_rate:g} S/s")
+    # Configure the analog output to write continuously
+    ao_chn_str = "Dev1/ao0"
+    ao_SR, _ = Extract_Sample_Rate(ao_chn_str, 'Dev1')
+    number_of_samples = ao_SR
 
-        nu = 10 # frequency in units of Hz
-        two_pi_nu = 2.0 * math.pi * nu
-        amp = 5.0 # wave amplitude
-        phase = 0.0
-        t0 = 0.0
-        timeInt, data = Generate_Sine_Waveform(sampling_rate, number_of_samples, t0, nu, amp, phase)
+    ao_task = nidaqmx.Task()
+    ao_task.ao_channels.add_ao_voltage_chan(ao_chn_str, min_val = -10, max_val = +10)
+    ao_task.timing.cfg_samp_clk_timing(rate = ao_SR, sample_mode = nidaqmx.constants.AcquisitionType.CONTINUOUS, 
+                                       samps_per_chan = number_of_samples, active_edge = nidaqmx.constants.Edge.RISING)
+
+    actual_sampling_rate = ao_task.timing.samp_clk_rate # read the actual sample rate
+    print(f"Actual sampling rate: {actual_sampling_rate:g} S/s")
+
+    # Generate the waveform data
+    nu = 10 # frequency in units of Hz
+    two_pi_nu = 2.0 * math.pi * nu
+    amp = math.sqrt(2) # wave amplitude
+    phase = 0.0
+    t0 = 0.0
+    timeInt, data = Generate_Sine_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase)
+
+    # Configure the analog input
+    ai_chn_str = "Dev1/ai3"
+    ai_SR, _ = Extract_Sample_Rate(ai_chn_str, 'Dev1')
+    number_of_samples = ai_SR
+
+    # Configure Analog Input
+    ai_task = nidaqmx.Task()        
+
+    # If ai_chn_str is not correctly defined an exception will be thrown by nidaqmx
+    ai_task.ai_channels.add_ai_voltage_chan(ai_chn_str, terminal_config = nidaqmx.constants.TerminalConfiguration.DIFF, 
+                                            min_val = -10, max_val = +10)
+            
+    # Configure the sampling timing
+    # Note that when reading data later no. samples to be read must equal samps_per_chan as defined
+    # Otherwise an exception will be thrown by nidaqmx
+    ai_task.timing.cfg_samp_clk_timing(ai_SR, sample_mode = nidaqmx.constants.AcquisitionType.FINITE, 
+                                        samps_per_chan = number_of_samples, active_edge = nidaqmx.constants.Edge.RISING)
+    
+    # Write the waveform data until you want to stop
+    ao_task.write(data)
+    ao_task.start()
+
+    count = 0
+    while count < 5:
+        # Read the waveform data into memory
+        ai_task.start()
+        waveform = ai_task.read(nidaqmx.constants.READ_ALL_AVAILABLE)
+
+        t0 = time.time()
+        dT = 1.0 / float(ai_SR)
+        tf = t0 + number_of_samples * dT
+        times = numpy.arange(t0, tf, dT)
         
-        task.write(data)
-        task.start()
+        plot.plot(times, waveform)
+        # plot.xlabel("Seconds")
+        # plot.ylabel(waveform.units)
+        # plot.title(waveform.channel_name)
+        plot.grid(True)
+        plot.show()
 
-        input("Generating voltage continuously. Press Enter to stop.\n")
+        ai_task.stop()
 
-        task.stop()
+        count += 1
 
-        #task.close()
+    input("Generating voltage continuously. Press Enter to stop.\n")
 
-    # with nidaqmx.Task() as task:
-    #     total_samples = 1000
-    #     task.ao_channels.add_ao_voltage_chan("Dev2/ao0")
-    #     task.timing.cfg_samp_clk_timing(1000.0, sample_mode=nidaqmx.constants.AcquisitionType.CONTINUOUS, samps_per_chan=total_samples)
+    ao_task.stop()
 
-    #     waveform = nitypes.waveform.AnalogWaveform(sample_count=total_samples)
-    #     waveform.raw_data[:] = [5.0 * i / total_samples for i in range(total_samples)]
-    #     waveform.units = "Volts"
+    ao_task.close()
 
-    #     number_of_samples_written = task.write(waveform, auto_start=True)
-    #     print(f"Generating {number_of_samples_written} voltage samples.")
-    #     task.wait_until_done()
-    #     task.stop()
+    
+
+    ai_task.close()
 
 def AI_Waveform_Read_Test():
 
