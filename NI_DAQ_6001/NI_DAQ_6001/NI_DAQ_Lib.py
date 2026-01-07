@@ -669,8 +669,6 @@ def AO_Waveform_Write_Test():
 
     ao_task.close()
 
-    
-
     ai_task.close()
 
 def AI_Waveform_Read_Test():
