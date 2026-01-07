@@ -599,8 +599,8 @@ def AO_Waveform_Write_Test():
     # Use the analog output to write a waveform to the output stream
 
     # Configure the analog output to write continuously
-    ao_chn_str = "Dev1/ao0"
-    ao_SR, _ = Extract_Sample_Rate(ao_chn_str, 'Dev1')
+    ao_chn_str = "Dev2/ao0"
+    ao_SR, _ = Extract_Sample_Rate(ao_chn_str, 'Dev2')
     number_of_samples = ao_SR
 
     ao_task = nidaqmx.Task()
@@ -617,11 +617,13 @@ def AO_Waveform_Write_Test():
     amp = math.sqrt(2) # wave amplitude
     phase = 0.0
     t0 = 0.0
-    timeInt, data = Generate_Sine_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase)
+    #timeInt, data = Generate_Sine_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase)
+    #timeInt, data = Generate_Triangle_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase, pulsed = True)
+    timeInt, data = Generate_Square_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase, pulsed = False)
 
     # Configure the analog input
-    ai_chn_str = "Dev1/ai3"
-    ai_SR, _ = Extract_Sample_Rate(ai_chn_str, 'Dev1')
+    ai_chn_str = "Dev2/ai3"
+    ai_SR, _ = Extract_Sample_Rate(ai_chn_str, 'Dev2')
     number_of_samples = ai_SR
 
     # Configure Analog Input
