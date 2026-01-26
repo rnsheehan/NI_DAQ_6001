@@ -8,6 +8,7 @@ import math
 import numpy
 import NI_DAQ_Lib
 import Plotting
+import NI_DAQ_Hacking
 
 # The aim of this script is to establish comms with NI-DAQ USB 6001
 # Official Documentation: https://nidaqmx-python.readthedocs.io/en/stable/
