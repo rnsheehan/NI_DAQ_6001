@@ -347,10 +347,15 @@ def AI_Monitor(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev2', loud =
             # Note that when reading data later no. samples to be read must equal samps_per_chan as defined
             # Otherwise an exception will be thrown by nidaqmx
             ai_task.timing.cfg_samp_clk_timing(ai_SR, sample_mode = nidaqmx.constants.AcquisitionType.FINITE, 
-                                               samps_per_chan = ai_SR>>1, active_edge = nidaqmx.constants.Edge.RISING)
+                                               samps_per_chan = ai_SR, active_edge = nidaqmx.constants.Edge.RISING)
 
             # AI Channel Monitoring
+            DELAY = 10
+            N_meas = 7
+            count = 0
+            while count < N_meas:
 
+                count += 1
 
             # Close off the ai_task
             ai_task.close()
@@ -362,3 +367,84 @@ def AI_Monitor(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev2', loud =
         print(ERR_STATEMENT)
         print(e)
 
+def AI_Timed_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev2', total_time = 10, no_meas = 10, loud = False):
+    """
+    Use NI-DAQ to measure multiple AI for specified time period, with delay between measurements
+
+    differential read is assumed on all channels
+
+    R. Sheehan 27 - 1 - 2026
+    """
+
+    FUNC_NAME = ".AI_Monitor()" # use this in exception handling messages
+    ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
+
+    try:
+        c1 = True if physical_channel_str != '' else False
+        c2 = True if device_name != '' else False
+        c3 = True if total_time > 0 else False
+        c3 = True if no_meas > 3 else False
+        c10 = c1 and c2
+
+        if c10:
+            # Extract the sample rate per channel
+            ai_chn_str = physical_channel_str
+
+            ai_SR, ai_no_ch = Extract_Sample_Rate(ai_chn_str, device_name)
+
+            # Configure Analog Input
+            ai_task = nidaqmx.Task()        
+
+            # If ai_chn_str is not correctly defined an exception will be thrown by nidaqmx
+            ai_task.ai_channels.add_ai_voltage_chan(ai_chn_str, terminal_config = nidaqmx.constants.TerminalConfiguration.DIFF, 
+                                                    min_val = -10, max_val = +10)
+            
+            # Configure the sampling timing
+            # Note that when reading data later no. samples to be read must equal samps_per_chan as defined
+            # Otherwise an exception will be thrown by nidaqmx
+            ai_task.timing.cfg_samp_clk_timing(ai_SR, sample_mode = nidaqmx.constants.AcquisitionType.FINITE, 
+                                               samps_per_chan = ai_SR, active_edge = nidaqmx.constants.Edge.RISING)
+
+            # AI Channel Monitoring
+            DELAY = (60 * total_time) / no_meas # compute delay time in seconds
+            if loud:
+                print("No. Measurement Channels = ",ai_no_ch)
+                print("AI Sample Rate = ",ai_SR/1000,"( kHz )")                
+                print("Delay Time = ",DELAY," ( s )")
+            count = 0
+            while count < no_meas:
+                time.sleep(DELAY)
+                # read some data
+                # documentation for read https://nidaqmx-python.readthedocs.io/en/stable/task.html#nidaqmx.task.InStream.read
+                data = ai_task.read(nidaqmx.constants.READ_ALL_AVAILABLE)
+
+                if ai_no_ch > 1:
+                    for i in range(0, ai_no_ch, 1):
+                        avg = numpy.mean(data[i])
+                        stdev = numpy.std(data[i], ddof = 1)
+                        print("ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f (V)"%{"v1":i, "v2":avg, "v3":stdev})
+                    print()
+                else:
+                    avg = numpy.mean(data)
+                    stdev = numpy.std(data, ddof = 1)
+                    print("ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f (V)"%{"v1":0, "v2":avg, "v3":stdev})
+
+                count += 1
+
+            # It is possible to compute the total average by combining the averages from each of the individual measurements, similarly for standard deviation
+            # https://stats.stackexchange.com/questions/55999/is-it-possible-to-find-the-combined-standard-deviation?noredirect=1&lq=1
+            # https://stats.stackexchange.com/questions/43031/how-to-prove-that-averaging-averages-of-different-partitions-of-a-dataset-produc
+            # https://stats.stackexchange.com/questions/10441/how-to-calculate-the-variance-of-a-partition-of-variables?noredirect=1&lq=1
+            # This means that for a long measurement with a very large no. of samples the raw data need not be stored in memory
+            # Best practice is probably to write the raw data to a file as it's being measured
+            # Then measurement distributions, taken under different conditions, can be compared. 
+
+            # Close off the ai_task
+            ai_task.close()
+        else:
+            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in physical_channel_str'
+            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in device_name'
+            raise Exception
+    except Exception as e:
+        print(ERR_STATEMENT)
+        print(e)

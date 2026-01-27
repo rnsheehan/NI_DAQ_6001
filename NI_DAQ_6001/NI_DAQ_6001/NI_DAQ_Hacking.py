@@ -558,14 +558,14 @@ def AI_Read_Multiple_Channels_with_Clock_Test():
         ao_task = nidaqmx.Task()
         ao_chn_str = 'Dev1/ao0:1'
         ao_task.ao_channels.add_ao_voltage_chan(ao_chn_str, min_val = -10, max_val = +10)
-        ao_SR, ao_no_ch = Extract_Sample_Rate(ao_chn_str, dev_name)
+        ao_SR, ao_no_ch = NI_DAQ_Lib.Extract_Sample_Rate(ao_chn_str, dev_name)
         
         # Configure Analog Input
         ai_task = nidaqmx.Task()        
         ai_chn_str = 'Dev1/ai0:2'
-        ai_SR, ai_no_ch = Extract_Sample_Rate(ai_chn_str, dev_name, True)
+        ai_SR, ai_no_ch = NI_DAQ_Lib.Extract_Sample_Rate(ai_chn_str, dev_name, True)
         ai_task.ai_channels.add_ai_voltage_chan(ai_chn_str, terminal_config = nidaqmx.constants.TerminalConfiguration.DIFF, min_val = -10, max_val = +10)
-        ai_task.timing.cfg_samp_clk_timing(ai_SR, sample_mode = nidaqmx.constants.AcquisitionType.FINITE, samps_per_chan = ai_SR>>4, active_edge = nidaqmx.constants.Edge.RISING)
+        ai_task.timing.cfg_samp_clk_timing(ai_SR, sample_mode = nidaqmx.constants.AcquisitionType.FINITE, samps_per_chan = ai_SR, active_edge = nidaqmx.constants.Edge.RISING)
         # It seems that source = "" chooses the default onboard clock, which afaik is equivalent to nidaqmx.constants.SampleTimingType.SAMPLE_CLOCK
 
         ao_task.start()
@@ -581,7 +581,7 @@ def AI_Read_Multiple_Channels_with_Clock_Test():
         # documentation for read https://nidaqmx-python.readthedocs.io/en/stable/task.html#nidaqmx.task.InStream.read
         data = ai_task.read(nidaqmx.constants.READ_ALL_AVAILABLE)
 
-        print("ai SR = ",ai_SR,' Hz => dT = ',1.0 / float(ai_SR),' s')
+        print("ai SR = ",ai_SR,' Hz => dT = ',1000.0 / float(ai_SR),' ( ms )')
         if ai_no_ch == 1:
             print("samps_per_chan = ",len(data))
         else:

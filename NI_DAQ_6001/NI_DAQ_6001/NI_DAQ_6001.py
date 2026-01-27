@@ -43,10 +43,12 @@ if __name__ == '__main__':
 
     #NI_DAQ_Hacking.NI_DAQ_SR_Extract_Testing()
 
-    #NI_DAQ_Hacking.AI_Read_Multiple_Channels_with_Clock()
+    #NI_DAQ_Hacking.AI_Read_Multiple_Channels_with_Clock_Test()
 
     #NI_DAQ_Hacking.DC_Sweep_Diode()
 
-    NI_DAQ_Hacking.AO_Waveform_Write_Test()
+    #NI_DAQ_Hacking.AO_Waveform_Write_Test()
 
     #NI_DAQ_Hacking.AI_Waveform_Read_Test()
+
+    NI_DAQ_Lib.AI_Timed_Measurement('Dev1/ai0', 'Dev1', 0.5, 3, True)
