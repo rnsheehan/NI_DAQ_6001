@@ -51,4 +51,4 @@ if __name__ == '__main__':
 
     #NI_DAQ_Hacking.AI_Waveform_Read_Test()
 
-    NI_DAQ_Lib.AI_Timed_Measurement('Dev1/ai0', 'Dev1', 0.5, 3, True)
+    NI_DAQ_Lib.AI_Timed_DC_Measurement('Dev1/ai0:3', 'Dev1', 0.5, 3)

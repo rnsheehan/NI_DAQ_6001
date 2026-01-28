@@ -18,6 +18,7 @@ R. Sheehan 21 - 11 - 2025
 
 # import required libraries
 import os
+from pickle import FALSE
 
 import nitypes.waveform
 
@@ -367,7 +368,7 @@ def AI_Monitor(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev2', loud =
         print(ERR_STATEMENT)
         print(e)
 
-def AI_Timed_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev2', total_time = 10, no_meas = 10, loud = False):
+def AI_Timed_DC_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev2', total_time = 10, no_meas = 10, loud = False):
     """
     Use NI-DAQ to measure multiple AI for specified time period, with delay between measurements
 
@@ -376,7 +377,7 @@ def AI_Timed_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev
     R. Sheehan 27 - 1 - 2026
     """
 
-    FUNC_NAME = ".AI_Monitor()" # use this in exception handling messages
+    FUNC_NAME = ".AI_Timed_DC_Measurement()" # use this in exception handling messages
     ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
 
     try:
@@ -387,6 +388,8 @@ def AI_Timed_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev
         c10 = c1 and c2
 
         if c10:
+            # Configure the NI-DAQ for AI read
+
             # Extract the sample rate per channel
             ai_chn_str = physical_channel_str
 
@@ -405,42 +408,133 @@ def AI_Timed_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev
             ai_task.timing.cfg_samp_clk_timing(ai_SR, sample_mode = nidaqmx.constants.AcquisitionType.FINITE, 
                                                samps_per_chan = ai_SR, active_edge = nidaqmx.constants.Edge.RISING)
 
-            # AI Channel Monitoring
+            # AI Channel Monitoring Measurement
+
+            # create files for storing data locally
+            filename = "AI_DC_Meas_%(v1)s_Tmeas_%(v2)d_Nmeas_%(v3)d.txt"%{"v1":ai_chn_str.replace('/','_').replace(':',''), "v2":total_time, "v3":no_meas}
+            the_file = open(filename,'w') # open the file for writing, truncating it first
+            the_file.close()
+            print("Writing to", filename)
+
+            filename_avg = "AI_DC_Meas_%(v1)s_Tmeas_%(v2)d_Nmeas_%(v3)d_Statistics.txt"%{"v1":ai_chn_str.replace('/','_').replace(':',''), "v2":total_time, "v3":no_meas}
+            avg_file = open(filename_avg,'w') # open the file for writing, truncating it first
+            avg_file.close()
+            print("Writing to", filename_avg)
+
+            # Compute DELAY time between measurements
             DELAY = (60 * total_time) / no_meas # compute delay time in seconds
-            if loud:
-                print("No. Measurement Channels = ",ai_no_ch)
-                print("AI Sample Rate = ",ai_SR/1000,"( kHz )")                
-                print("Delay Time = ",DELAY," ( s )")
+            
+            print("No. Measurement Channels =", ai_no_ch)
+            print("AI Sample Rate =", ai_SR/1000,"( kHz )")                
+            print("Delay Time =", DELAY,"( s )")
+
+            # create arrays for storing measured data
+            if ai_no_ch > 1:
+                avg_arr = numpy.zeros((no_meas, ai_no_ch))
+                stdev_arr = numpy.zeros((no_meas, ai_no_ch))
+                counts_arr = numpy.full((no_meas, ai_no_ch), ai_SR)
+            else:
+                avg_arr = numpy.zeros(no_meas)
+                stdev_arr = numpy.zeros(no_meas)
+                counts_arr = numpy.repeat(ai_SR, no_meas)
+
+            # AI Channel Monitoring Measurement START
+
+            # Loop over all measurements with time DELAY between measurements
             count = 0
             while count < no_meas:
                 time.sleep(DELAY)
-                # read some data
+                # read data
                 # documentation for read https://nidaqmx-python.readthedocs.io/en/stable/task.html#nidaqmx.task.InStream.read
                 data = ai_task.read(nidaqmx.constants.READ_ALL_AVAILABLE)
 
+                avg_file = open(filename_avg, 'a')
+                avg_file.write("Measurement %(v1)d\n"%{"v1":count})
+
+                print("Measurement ",count)
+
                 if ai_no_ch > 1:
+                    # Multi-channel measurement parsing
                     for i in range(0, ai_no_ch, 1):
                         avg = numpy.mean(data[i])
                         stdev = numpy.std(data[i], ddof = 1)
-                        print("ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f (V)"%{"v1":i, "v2":avg, "v3":stdev})
-                    print()
+                        avg_arr[count][i] = avg
+                        stdev_arr[count][i] = stdev
+                        out_str = "ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f ( V )\n"%{"v1":i, "v2":avg, "v3":stdev}
+                        avg_file.write(out_str)
+                        if loud: print(out_str)                        
+                    if loud: print()
+                    avg_file.write('')
+
+                    # Write the measured data to a file
+                    with open(filename,'a') as the_file:
+                        numpy.savetxt(the_file, numpy.transpose(data), "%0.9f", delimiter = ',')
+
                 else:
+                    # Single-channel measurement parsing
                     avg = numpy.mean(data)
                     stdev = numpy.std(data, ddof = 1)
-                    print("ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f (V)"%{"v1":0, "v2":avg, "v3":stdev})
+                    avg_arr[count] = avg
+                    stdev_arr[count] = stdev
+                    out_str = "ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f ( V )\n"%{"v1":0, "v2":avg, "v3":stdev}
+                    avg_file.write(out_str)
+                    if loud: print(out_str)                    
+
+                    # Write the measured data to a file
+                    with open(filename, 'a') as the_file:
+                        numpy.savetxt(the_file, data, "%0.9f", delimiter = ',')
+
+                avg_file.close()
+
+                # forcefully remove data from memory
+                del data; 
 
                 count += 1
 
-            # It is possible to compute the total average by combining the averages from each of the individual measurements, similarly for standard deviation
-            # https://stats.stackexchange.com/questions/55999/is-it-possible-to-find-the-combined-standard-deviation?noredirect=1&lq=1
-            # https://stats.stackexchange.com/questions/43031/how-to-prove-that-averaging-averages-of-different-partitions-of-a-dataset-produc
-            # https://stats.stackexchange.com/questions/10441/how-to-calculate-the-variance-of-a-partition-of-variables?noredirect=1&lq=1
-            # This means that for a long measurement with a very large no. of samples the raw data need not be stored in memory
-            # Best practice is probably to write the raw data to a file as it's being measured
-            # Then measurement distributions, taken under different conditions, can be compared. 
-
+            # AI Channel Monitoring Measurement END
             # Close off the ai_task
             ai_task.close()
+
+            # Combine the averages and std. devs. into a single value for the entire measurement
+            avg_file = open(filename_avg, 'a')
+            avg_file.write("Combined Values\n")
+            print("Combined Values")
+            if ai_no_ch > 1:
+                for i in range(0, ai_no_ch, 1):
+                    avg, stdev = Combine_Statistics(avg_arr[:,i], stdev_arr[:,i], counts_arr[:,i])
+                    out_str = "ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f (V)\n"%{"v1":i, "v2":avg, "v3":stdev}
+                    avg_file.write(out_str)
+                    print(out_str)
+            else:
+                avg, stdev = Combine_Statistics(avg_arr, stdev_arr, counts_arr)
+                out_str = "ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f (V)\n"%{"v1":0, "v2":avg, "v3":stdev}
+                avg_file.write(out_str)
+                print(out_str)
+            avg_file.close() 
+            
+            # forcefully remove the arrays from memory
+            del avg_arr; del stdev_arr; del counts_arr; 
+
+            MOVE_FILES = True
+            if MOVE_FILES:
+                # This can be optional
+                # Move the files to a more convenient location
+                # The location must exist on your computer, otherwise the files won't be moved
+                DATA_HOME = 'c:/users/robertsheehan/Research/Electronics/uHeater_Control/'
+
+                if os.path.isdir(DATA_HOME):
+                    if not os.path.exists(DATA_HOME + filename) and not os.path.exists(DATA_HOME + filename_avg):
+                        os.rename(filename, DATA_HOME + filename)
+                        os.rename(filename_avg, DATA_HOME + filename_avg)
+                        print("Files moved successfully to:",DATA_HOME)
+                    else:
+                        print("Files not moved")
+                        print(DATA_HOME + filename,"already exists")
+                        print(DATA_HOME + filename_avg,"already exists")
+                else:
+                    print("Files not moved")
+                    print("Location:",DATA_HOME,"does not exist")
+
         else:
             if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in physical_channel_str'
             if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in device_name'
@@ -448,3 +542,64 @@ def AI_Timed_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev
     except Exception as e:
         print(ERR_STATEMENT)
         print(e)
+
+def Combine_Statistics(avg_arr, stdev_arr, counts_arr, equal_sample_sizes = True, loud = False):
+
+    """
+    Combine averages and standard deviations from multiple different measurements into a single value
+    Account for unequal sample sizes if necessary
+
+    Input:
+        avg_arr: numpy array of floats giving averages from different measurements
+        stdev_arr: numpy array of floats giving std. dev. from different measurements
+        count_arr: numpy array of ints giving sample size for each measurement
+
+    Output:
+        avg_combined, std_combined
+
+    R. Sheehan 28 - 1 - 2026
+    """
+
+    # Is it possible to compute a single average and a single std. deviation from avg and std
+    # from all previous measurements? Yes, it is provided you know the no. samples used to compute
+    # each previous avg and std. dev. s
+    # for more information consult the following
+    # https://stats.stackexchange.com/questions/55999/is-it-possible-to-find-the-combined-standard-deviation?noredirect=1&lq=1
+    # https://stats.stackexchange.com/questions/43031/how-to-prove-that-averaging-averages-of-different-partitions-of-a-dataset-produc
+    # https://stats.stackexchange.com/questions/10441/how-to-calculate-the-variance-of-a-partition-of-variables?noredirect=1&lq=1
+
+    FUNC_NAME = ".Combine_Statistics()" # use this in exception handling messages
+    ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
+
+    try:
+        c1 = True if len(avg_arr) > 0 else False
+        c2 = True if len(stdev_arr) > 0 else False
+        c3 = True if len(counts_arr) > 0 else False
+        c4 = True if len(counts_arr) == len(stdev_arr) else False
+        c5 = True if len(counts_arr) == len(avg_arr) else False
+        c10 = c1 and c2 and c3 and c4 and c5
+
+        if c10:
+            avg_combined = numpy.average(avg_arr) if equal_sample_sizes else numpy.average(avg_arr, weights=counts_arr)
+            # must always use counts_arr when computing combined std. dev. because it include Bessel Correction for finite sample sizes
+            # In the case of equal sample sizes, no. samples does not quite cancel out from formula for combined std. dev. 
+            # whereas it does in the case of combined avg
+            numer = denom = 0.0
+            denom = numpy.sum(counts_arr) - 1
+            for i in range(0, len(stdev_arr), 1):
+                numer += (counts_arr[i] - 1)*stdev_arr[i]**2 + counts_arr[i]*(avg_arr[i] - avg_combined)**2
+            std_combined = math.sqrt(numer / denom)
+            if loud:
+                print()
+                print("Combined Value: %(v2)0.4f +/- %(v3)0.4f (V)"%{"v2":avg_combined, "v3":std_combined})
+            return avg_combined, std_combined
+        else:
+            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in avg_arr'
+            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in stdev_arr'
+            if c3 is False or c4 is False or c5 is False: ERR_STATEMENT = ERR_STATEMENT + '\nInput arrays are not correctly sized'            
+            raise Exception
+    except Exception as e:
+        print(ERR_STATEMENT)
+        print(e)
+
+    
