@@ -411,12 +411,12 @@ def AI_Timed_DC_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = '
             # AI Channel Monitoring Measurement
 
             # create files for storing data locally
-            filename = "AI_DC_Meas_%(v1)s_Tmeas_%(v2)d_Nmeas_%(v3)d.txt"%{"v1":ai_chn_str.replace('/','_').replace(':',''), "v2":total_time, "v3":no_meas}
+            filename = "AI_DC_Meas_%(v1)s_Tmeas_%(v2)d_Nmeas_%(v3)d_Cin_100.txt"%{"v1":ai_chn_str.replace('/','_').replace(':',''), "v2":total_time, "v3":no_meas}
             the_file = open(filename,'w') # open the file for writing, truncating it first
             the_file.close()
             print("Writing to", filename)
 
-            filename_avg = "AI_DC_Meas_%(v1)s_Tmeas_%(v2)d_Nmeas_%(v3)d_Statistics.txt"%{"v1":ai_chn_str.replace('/','_').replace(':',''), "v2":total_time, "v3":no_meas}
+            filename_avg = "AI_DC_Meas_%(v1)s_Tmeas_%(v2)d_Nmeas_%(v3)d_Cin_100_Statistics.txt"%{"v1":ai_chn_str.replace('/','_').replace(':',''), "v2":total_time, "v3":no_meas}
             avg_file = open(filename_avg,'w') # open the file for writing, truncating it first
             avg_file.close()
             print("Writing to", filename_avg)
