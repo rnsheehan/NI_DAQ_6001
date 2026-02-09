@@ -33,6 +33,8 @@ import nitypes
 import datetime
 import matplotlib.pyplot as plot
 import Sweep_Interval
+import Plotting
+import scipy
 
 MOD_NAME_STR = "NI_DAQ_Lib"
 AI_SR_MAX = 20000 # max sample rate on single AI channel, units of Hz
@@ -410,17 +412,6 @@ def AI_Timed_DC_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = '
 
             # AI Channel Monitoring Measurement
 
-            # create files for storing data locally
-            filename = "AI_DC_Meas_%(v1)s_Tmeas_%(v2)d_Nmeas_%(v3)d_Cin_100.txt"%{"v1":ai_chn_str.replace('/','_').replace(':',''), "v2":total_time, "v3":no_meas}
-            the_file = open(filename,'w') # open the file for writing, truncating it first
-            the_file.close()
-            print("Writing to", filename)
-
-            filename_avg = "AI_DC_Meas_%(v1)s_Tmeas_%(v2)d_Nmeas_%(v3)d_Cin_100_Statistics.txt"%{"v1":ai_chn_str.replace('/','_').replace(':',''), "v2":total_time, "v3":no_meas}
-            avg_file = open(filename_avg,'w') # open the file for writing, truncating it first
-            avg_file.close()
-            print("Writing to", filename_avg)
-
             # Compute DELAY time between measurements
             DELAY = (60 * total_time) / no_meas # compute delay time in seconds
             
@@ -444,12 +435,13 @@ def AI_Timed_DC_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = '
             count = 0
             while count < no_meas:
                 time.sleep(DELAY)
-                # read data
+                # read data into memory
+                # ai_task.read returns a numpy array of size (ai_SR rows * ai_no_ch cols)
                 # documentation for read https://nidaqmx-python.readthedocs.io/en/stable/task.html#nidaqmx.task.InStream.read
                 data = ai_task.read(nidaqmx.constants.READ_ALL_AVAILABLE)
 
-                avg_file = open(filename_avg, 'a')
-                avg_file.write("Measurement %(v1)d\n"%{"v1":count})
+                # avg_file = open(filename_avg, 'a')
+                # avg_file.write("Measurement %(v1)d\n"%{"v1":count})
 
                 print("Measurement ",count)
 
@@ -461,14 +453,8 @@ def AI_Timed_DC_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = '
                         avg_arr[count][i] = avg
                         stdev_arr[count][i] = stdev
                         out_str = "ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f ( V )\n"%{"v1":i, "v2":avg, "v3":stdev}
-                        avg_file.write(out_str)
                         if loud: print(out_str)                        
                     if loud: print()
-                    avg_file.write('')
-
-                    # Write the measured data to a file
-                    with open(filename,'a') as the_file:
-                        numpy.savetxt(the_file, numpy.transpose(data), "%0.9f", delimiter = ',')
 
                 else:
                     # Single-channel measurement parsing
@@ -477,16 +463,15 @@ def AI_Timed_DC_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = '
                     avg_arr[count] = avg
                     stdev_arr[count] = stdev
                     out_str = "ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f ( V )\n"%{"v1":0, "v2":avg, "v3":stdev}
-                    avg_file.write(out_str)
-                    if loud: print(out_str)                    
+                    if loud: print(out_str)                     
 
-                    # Write the measured data to a file
-                    with open(filename, 'a') as the_file:
-                        numpy.savetxt(the_file, data, "%0.9f", delimiter = ',')
+                # You could write the measured data to a file
+                # Open the file in append mode, then call numpy.savetxt
+                # numpy.savetxt truncates by default
+                # with open(filename, 'a') as the_file:
+                #     numpy.savetxt(the_file, data, "%0.9f", delimiter = ',')
 
-                avg_file.close()
-
-                # forcefully remove data from memory
+                # forcefully remove data from memory, remember that ai_task.read returns a numpy array of size (ai_SR rows * ai_no_ch cols)
                 del data; 
 
                 count += 1
@@ -495,22 +480,127 @@ def AI_Timed_DC_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = '
             # Close off the ai_task
             ai_task.close()
 
-            # Combine the averages and std. devs. into a single value for the entire measurement
-            avg_file = open(filename_avg, 'a')
-            avg_file.write("Combined Values\n")
-            print("Combined Values")
-            if ai_no_ch > 1:
-                for i in range(0, ai_no_ch, 1):
-                    avg, stdev = Combine_Statistics(avg_arr[:,i], stdev_arr[:,i], counts_arr[:,i])
-                    out_str = "ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f (V)\n"%{"v1":i, "v2":avg, "v3":stdev}
+            SAVE_DATA = True
+            if SAVE_DATA:
+                # Write the measured averages and measured stdev to their respective files
+                # create files for storing data locally
+                # Recall numpy.savetxt truncates by default
+                filename_avg = "AI_DC_Meas_Avg_%(v1)s_Tmeas_%(v2)d_Nmeas_%(v3)d_Cin_100.txt"%{"v1":ai_chn_str.replace('/','_').replace(':',''), "v2":total_time, "v3":no_meas}
+                #the_file = open(filename_avg,'w') # open the file for writing, truncating it first
+                #the_file.close()
+                print("Writing to", filename_avg)
+
+                numpy.savetxt(filename_avg, avg_arr, fmt = "%0.9f", delimiter = ',')
+
+                # Recall numpy.savetxt truncates by default
+                filename_stdev = "AI_DC_Meas_Stdev_%(v1)s_Tmeas_%(v2)d_Nmeas_%(v3)d_Cin_100.txt"%{"v1":ai_chn_str.replace('/','_').replace(':',''), "v2":total_time, "v3":no_meas}
+                #the_file = open(filename_stdev,'w') # open the file for writing, truncating it first
+                #the_file.close()
+                print("Writing to", filename_stdev)
+
+                numpy.savetxt(stdev_arr, avg_arr, fmt = "%0.9f", delimiter = ',')
+
+                # Combine the averages and std. devs. into a single value for the entire measurement
+                filename_stat = "AI_DC_Meas_%(v1)s_Tmeas_%(v2)d_Nmeas_%(v3)d_Cin_100_Statistics.txt"%{"v1":ai_chn_str.replace('/','_').replace(':',''), "v2":total_time, "v3":no_meas}
+                avg_file = open(filename_stat,'w') # open the file for writing, truncating it first
+                avg_file.close()
+                print("Writing to", filename_stat)
+
+                avg_file = open(filename_stat, 'a')
+                avg_file.write("Combined Values\n")
+                print("Combined Values")
+                if ai_no_ch > 1:
+                    for i in range(0, ai_no_ch, 1):
+                        avg, stdev = Combine_Statistics(avg_arr[:,i], stdev_arr[:,i], counts_arr[:,i])
+                        out_str = "ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f (V)\n"%{"v1":i, "v2":avg, "v3":stdev}
+                        avg_file.write(out_str)
+                        print(out_str)
+                else:
+                    avg, stdev = Combine_Statistics(avg_arr, stdev_arr, counts_arr)
+                    out_str = "ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f (V)\n"%{"v1":0, "v2":avg, "v3":stdev}
                     avg_file.write(out_str)
                     print(out_str)
-            else:
-                avg, stdev = Combine_Statistics(avg_arr, stdev_arr, counts_arr)
-                out_str = "ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f (V)\n"%{"v1":0, "v2":avg, "v3":stdev}
-                avg_file.write(out_str)
-                print(out_str)
-            avg_file.close() 
+                avg_file.close() 
+
+            ANALYSE_DATA = True
+            if ANALYSE_DATA:
+                # Process the data, make plots and reports etc
+                # Plot the time series of the measured data
+                # Plot the histogram of the measured data
+
+                times = numpy.arange(0, total_time, DELAY / 60.0)
+                if ai_no_ch > 1:
+                    hv_data = []
+                    marks = []
+                    sub_avg = numpy.array([])
+                    sub_stdev = numpy.array([])
+                    for i in range(0, ai_no_ch, 1):
+                        hv_data.append([times, avg_arr[:,i]])
+                        marks.append(Plotting.labs_lins[i])
+
+                        # Compute the averages of the data
+                        savg = numpy.mean(avg_arr[:,i])
+                        sstdev = numpy.std(avg_arr[:,i], ddof = 1)
+
+                        # Store them for scaling later
+                        sub_avg = numpy.append(sub_avg, savg)
+                        sub_stdev = numpy.append(sub_stdev, sstdev)
+
+                        # examine whether or not the data is correlated with time
+                        model = scipy.stats.linregress(times, avg_arr[:,i])
+
+                        print("ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f (V), m = %(v4)0.2f ( mV / hour ), c = %(v5)0.4f ( V ), R^{2} = %(v6)0.2f"%{"v1":i, "v2":savg,"v3":sstdev,"v4":6.0e+4*model.slope,"v5":model.intercept,"v6":model.rvalue**2})
+                        # In all cases there is a time-dependence on the order of less than 1 mV / hours
+                        alpha = 0.05
+                        if model.pvalue < alpha:
+                            print("Reject H_{0}: model slope is significantly different from m = 0\nThere is a time dependence in the model")
+                        else:
+                            print("Accept H_{0}: model slope is not significantly different from m = 0\nThere is no time dependence in the model")
+
+                        PLOT_TIME_SER = False
+                        # if PLOT_TIME_SER:
+                        #     # Make a time-series plot of the averaged data
+                        #     args = Plotting.plot_arg_multiple()
+
+                        #     args.loud = False
+                        #     args.crv_lab_list = qnttes
+                        #     args.mrk_list = marks
+                        #     args.x_label = 'Time ( mins )'
+                        #     args.y_label = 'Voltage ( V )'
+                        #     args.plt_range = [0, Tmeas, Vmin, Vmax]
+                        #     args.plt_title = r'Input Cap = %(v1)0.1f ( $\mu$F )'%{"v1":cap_vals[count]} 
+                        #     args.fig_name = f.replace('.txt','') + '_time'
+
+                        #     Plotting.plot_multiple_curves(hv_data, args)
+
+                        PLOT_TIME_SER_HIST = False
+                        # if PLOT_TIME_SER_HIST:
+                        #     # Make a plot of the scaled histogram of the measured data
+
+                        #     # Use Sturges' Rule to compute the no. of bins required
+                        #     n_bins = int( 1.0 + 3.322*math.log( len(hv_data[0][1]) ) )
+
+                        #     # scale the data to zero mean and unity std. dev. 
+                        #     hist_data = []
+                        #     for i in range(0, ai_no_ch, 1):
+                        #         #hv_data[i][1] = (hv_data[i][1] - sub_avg[i]) / sub_stdev[i]
+                        #         hist_data.append( (hv_data[i][1] - sub_avg[i]) / sub_stdev[i] )
+
+                        #     args = Plotting.plot_arg_multiple()
+
+                        #     args.loud = True
+                        #     args.bins = n_bins
+                        #     args.plt_range = [-3, 3, 0, 25]
+                        #     args.crv_lab_list = qnttes
+                        #     args.fig_name = f.replace('.txt','') + '_hist'
+
+                        #     Plotting.plot_multi_histogram(hist_data, args)
+
+                        #     del hist_data
+
+                    del hv_data; del marks; 
+                else:
+                    pass
             
             # forcefully remove the arrays from memory
             del avg_arr; del stdev_arr; del counts_arr; 
@@ -523,14 +613,21 @@ def AI_Timed_DC_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = '
                 DATA_HOME = 'c:/users/robertsheehan/Research/Electronics/uHeater_Control/'
 
                 if os.path.isdir(DATA_HOME):
-                    if not os.path.exists(DATA_HOME + filename) and not os.path.exists(DATA_HOME + filename_avg):
-                        os.rename(filename, DATA_HOME + filename)
+                    c1 = False if os.path.exists(DATA_HOME + filename_stdev) else True
+                    c2 = False if os.path.exists(DATA_HOME + filename_avg) else True
+                    c3 = False if os.path.exists(DATA_HOME + filename_stat) else True
+                    c10 = c1 and c2 and c3
+                    #if not os.path.exists(DATA_HOME + filename_stdev) and not os.path.exists(DATA_HOME + filename_avg) and not os.path.exists(DATA_HOME + filename_stat):
+                    if c10:
+                        os.rename(filename_stdev, DATA_HOME + filename_stdev)
                         os.rename(filename_avg, DATA_HOME + filename_avg)
+                        os.rename(filename_stat, DATA_HOME + filename_stat)
                         print("Files moved successfully to:",DATA_HOME)
                     else:
                         print("Files not moved")
-                        print(DATA_HOME + filename,"already exists")
+                        print(DATA_HOME + filename_stdev,"already exists")
                         print(DATA_HOME + filename_avg,"already exists")
+                        print(DATA_HOME + filename_stat,"already exists")
                 else:
                     print("Files not moved")
                     print("Location:",DATA_HOME,"does not exist")
