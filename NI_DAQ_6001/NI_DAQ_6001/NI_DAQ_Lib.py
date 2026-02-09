@@ -536,7 +536,6 @@ def AI_Timed_DC_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = '
                     sub_stdev = numpy.array([])
                     for i in range(0, ai_no_ch, 1):
                         hv_data.append([times, avg_arr[:,i]])
-                        marks.append(Plotting.labs_lins[i])
 
                         # Compute the averages of the data
                         savg = numpy.mean(avg_arr[:,i])
@@ -557,48 +556,47 @@ def AI_Timed_DC_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = '
                         else:
                             print("Accept H_{0}: model slope is not significantly different from m = 0\nThere is no time dependence in the model")
 
-                        PLOT_TIME_SER = False
-                        # if PLOT_TIME_SER:
-                        #     # Make a time-series plot of the averaged data
-                        #     args = Plotting.plot_arg_multiple()
+                    PLOT_TIME_SER = False
+                    if PLOT_TIME_SER:
+                        # Make a time-series plot of the averaged data
+                        args = Plotting.plot_arg_multiple()
 
-                        #     args.loud = False
-                        #     args.crv_lab_list = qnttes
-                        #     args.mrk_list = marks
-                        #     args.x_label = 'Time ( mins )'
-                        #     args.y_label = 'Voltage ( V )'
-                        #     args.plt_range = [0, Tmeas, Vmin, Vmax]
-                        #     args.plt_title = r'Input Cap = %(v1)0.1f ( $\mu$F )'%{"v1":cap_vals[count]} 
-                        #     args.fig_name = f.replace('.txt','') + '_time'
+                        args.loud = False
+                        args.crv_lab_list = ["ai%(v1)d"%{"v1":c} for c in range(0, ai_no_ch, 1)]
+                        args.mrk_list = [Plotting.labs_lins[i] for i in range(0, ai_no_ch, 1)]
+                        args.x_label = 'Time ( mins )'
+                        args.y_label = 'Voltage ( V )'
+                        #args.plt_range = [0, total_time, Vmin, Vmax]
+                        #args.plt_title = r'Input Cap = %(v1)0.1f ( $\mu$F )'%{"v1":cap_vals[count]} 
+                        #args.fig_name = f.replace('.txt','') + '_time'
 
-                        #     Plotting.plot_multiple_curves(hv_data, args)
+                        Plotting.plot_multiple_curves(hv_data, args)
 
-                        PLOT_TIME_SER_HIST = False
-                        # if PLOT_TIME_SER_HIST:
-                        #     # Make a plot of the scaled histogram of the measured data
+                    PLOT_TIME_SER_HIST = False
+                    if PLOT_TIME_SER_HIST:
+                        # Make a plot of the scaled histogram of the measured data
 
-                        #     # Use Sturges' Rule to compute the no. of bins required
-                        #     n_bins = int( 1.0 + 3.322*math.log( len(hv_data[0][1]) ) )
+                        # Use Sturges' Rule to compute the no. of bins required
+                        n_bins = int( 1.0 + 3.322*math.log( len(avg_arr[:,0]) ) )
 
-                        #     # scale the data to zero mean and unity std. dev. 
-                        #     hist_data = []
-                        #     for i in range(0, ai_no_ch, 1):
-                        #         #hv_data[i][1] = (hv_data[i][1] - sub_avg[i]) / sub_stdev[i]
-                        #         hist_data.append( (hv_data[i][1] - sub_avg[i]) / sub_stdev[i] )
+                        # scale the data to zero mean and unity std. dev. 
+                        hist_data = []
+                        for i in range(0, ai_no_ch, 1):
+                            hist_data.append( (avg_arr[:,i] - sub_avg[i]) / sub_stdev[i] )
 
-                        #     args = Plotting.plot_arg_multiple()
+                        args = Plotting.plot_arg_multiple()
 
-                        #     args.loud = True
-                        #     args.bins = n_bins
-                        #     args.plt_range = [-3, 3, 0, 25]
-                        #     args.crv_lab_list = qnttes
-                        #     args.fig_name = f.replace('.txt','') + '_hist'
+                        args.loud = True
+                        args.bins = n_bins
+                        args.plt_range = [-3, 3, 0, 25]
+                        args.crv_lab_list = ["ai%(v1)d"%{"v1":c} for c in range(0, ai_no_ch, 1)]
+                        #args.fig_name = f.replace('.txt','') + '_hist'
 
-                        #     Plotting.plot_multi_histogram(hist_data, args)
+                        Plotting.plot_multi_histogram(hist_data, args)
 
-                        #     del hist_data
+                        del hist_data
 
-                    del hv_data; del marks; 
+                    del hv_data;
                 else:
                     pass
             
