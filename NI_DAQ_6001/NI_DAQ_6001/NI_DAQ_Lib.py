@@ -19,6 +19,7 @@ R. Sheehan 21 - 11 - 2025
 # import required libraries
 import os
 from pickle import FALSE
+from tkinter import EXCEPTION
 
 import nitypes.waveform
 
@@ -632,20 +633,28 @@ def Move_Files(destination, file_list, loud = False):
     R. Sheehan 9 - 2 - 2026
     """
 
-    if os.path.isdir(destination):
-        if len(file_list) > 0:
-            for i in range(0, len(file_list), 1):
-                if os.path.exists(destination + file_list[i]):
-                    # Do nothing, file already exists in destination location
-                    if loud: print("File not moved:",destination + file_list[i],"already exists")
-                else:
-                    # move file to new destination
-                    os.rename(file_list[i], destination + file_list[i])
+    FUNC_NAME = ".Move_Files()" # use this in exception handling messages
+    ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
+
+    try:
+        if os.path.isdir(destination):
+            if len(file_list) > 0:
+                for i in range(0, len(file_list), 1):
+                    if os.path.exists(destination + file_list[i]):
+                        # Do nothing, file already exists in destination location
+                        if loud: print("File not moved:",destination + file_list[i],"already exists")
+                    else:
+                        # move file to new destination
+                        os.rename(file_list[i], destination + file_list[i])
+            else:
+                ERR_STATEMENT += "No files moved, file_list is empty"
+                raise Exception
         else:
-            print("No files moved, file_list is empty")
-    else:
-        print("Files not moved")
-        print("Location:",destination,"does not exist")
+            ERR_STATEMENT += "Files not moved\n" + "Location:",destination,"does not exist"
+            raise Exception
+    except Exception as e:
+        print(ERR_STATEMENT)
+        print(e)
 
 
 def Combine_Statistics(avg_arr, stdev_arr, counts_arr, equal_sample_sizes = True, loud = False):
