@@ -26,17 +26,16 @@ import nitypes.waveform
 os.environ["NIDAQMX_ENABLE_WAVEFORM_SUPPORT"] = "1"
 
 import re
-import glob
 import math
 import numpy
 import time
 import nidaqmx
 import nitypes
 import datetime
-import matplotlib.pyplot as plot
+
 import Sweep_Interval
 import Plotting
-import scipy
+import Common
 
 MOD_NAME_STR = "NI_DAQ_Lib"
 AI_SR_MAX = 20000 # max sample rate on single AI channel, units of Hz
@@ -513,12 +512,12 @@ def AI_Timed_DC_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = '
                 print("Combined Values")
                 if ai_no_ch > 1:
                     for i in range(0, ai_no_ch, 1):
-                        avg, stdev = Combine_Statistics(avg_arr[:,i], stdev_arr[:,i], counts_arr[:,i])
+                        avg, stdev = Common.Combine_Statistics(avg_arr[:,i], stdev_arr[:,i], counts_arr[:,i])
                         out_str = "ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f (V)\n"%{"v1":i, "v2":avg, "v3":stdev}
                         avg_file.write(out_str)
                         print(out_str)
                 else:
-                    avg, stdev = Combine_Statistics(avg_arr, stdev_arr, counts_arr)
+                    avg, stdev = Common.Combine_Statistics(avg_arr, stdev_arr, counts_arr)
                     out_str = "ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f (V)\n"%{"v1":0, "v2":avg, "v3":stdev}
                     avg_file.write(out_str)
                     print(out_str)
@@ -614,103 +613,13 @@ def AI_Timed_DC_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = '
                 DATA_HOME = 'c:/users/robertsheehan/Research/Electronics/uHeater_Control/'
 
                 txt_files = glob.glob("AI_DC_Meas*.txt")
-                Move_Files(DATA_HOME, txt_files)
+                Common.Move_Files(DATA_HOME, txt_files)
 
                 png_files = glob.glob("AI_DC_Meas*.png")
-                Move_Files(DATA_HOME, png_files)
+                Common.Move_Files(DATA_HOME, png_files)
         else:
             if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in physical_channel_str'
             if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in device_name'
-            raise Exception
-    except Exception as e:
-        print(ERR_STATEMENT)
-        print(e)
-
-def Move_Files(destination, file_list, loud = False):
-    """
-    Move a list of files from one location to another
-
-    R. Sheehan 9 - 2 - 2026
-    """
-
-    FUNC_NAME = ".Move_Files()" # use this in exception handling messages
-    ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
-
-    try:
-        if os.path.isdir(destination):
-            if len(file_list) > 0:
-                for i in range(0, len(file_list), 1):
-                    if os.path.exists(destination + file_list[i]):
-                        # Do nothing, file already exists in destination location
-                        if loud: print("File not moved:",destination + file_list[i],"already exists")
-                    else:
-                        # move file to new destination
-                        os.rename(file_list[i], destination + file_list[i])
-            else:
-                ERR_STATEMENT += "\nNo files moved, file_list is empty"
-                raise Exception
-        else:
-            ERR_STATEMENT += "\nFiles not moved." + "Location:",destination,"does not exist"
-            raise Exception
-    except Exception as e:
-        print(ERR_STATEMENT)
-        print(e)
-
-
-def Combine_Statistics(avg_arr, stdev_arr, counts_arr, equal_sample_sizes = True, loud = False):
-
-    """
-    Combine averages and standard deviations from multiple different measurements into a single value
-    Account for unequal sample sizes if necessary
-
-    Input:
-        avg_arr: numpy array of floats giving averages from different measurements
-        stdev_arr: numpy array of floats giving std. dev. from different measurements
-        count_arr: numpy array of ints giving sample size for each measurement
-
-    Output:
-        avg_combined, std_combined
-
-    R. Sheehan 28 - 1 - 2026
-    """
-
-    # Is it possible to compute a single average and a single std. deviation from avg and std
-    # from all previous measurements? Yes, it is provided you know the no. samples used to compute
-    # each previous avg and std. dev. s
-    # for more information consult the following
-    # https://stats.stackexchange.com/questions/55999/is-it-possible-to-find-the-combined-standard-deviation?noredirect=1&lq=1
-    # https://stats.stackexchange.com/questions/43031/how-to-prove-that-averaging-averages-of-different-partitions-of-a-dataset-produc
-    # https://stats.stackexchange.com/questions/10441/how-to-calculate-the-variance-of-a-partition-of-variables?noredirect=1&lq=1
-
-    FUNC_NAME = ".Combine_Statistics()" # use this in exception handling messages
-    ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
-
-    try:
-        c1 = True if len(avg_arr) > 0 else False
-        c2 = True if len(stdev_arr) > 0 else False
-        c3 = True if len(counts_arr) > 0 else False
-        c4 = True if len(counts_arr) == len(stdev_arr) else False
-        c5 = True if len(counts_arr) == len(avg_arr) else False
-        c10 = c1 and c2 and c3 and c4 and c5
-
-        if c10:
-            avg_combined = numpy.average(avg_arr) if equal_sample_sizes else numpy.average(avg_arr, weights=counts_arr)
-            # must always use counts_arr when computing combined std. dev. because it include Bessel Correction for finite sample sizes
-            # In the case of equal sample sizes, no. samples does not quite cancel out from formula for combined std. dev. 
-            # whereas it does in the case of combined avg
-            numer = denom = 0.0
-            denom = numpy.sum(counts_arr) - 1
-            for i in range(0, len(stdev_arr), 1):
-                numer += (counts_arr[i] - 1)*stdev_arr[i]**2 + counts_arr[i]*(avg_arr[i] - avg_combined)**2
-            std_combined = math.sqrt(numer / denom)
-            if loud:
-                print()
-                print("Combined Value: %(v2)0.4f +/- %(v3)0.4f (V)"%{"v2":avg_combined, "v3":std_combined})
-            return avg_combined, std_combined
-        else:
-            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in avg_arr'
-            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in stdev_arr'
-            if c3 is False or c4 is False or c5 is False: ERR_STATEMENT = ERR_STATEMENT + '\nInput arrays are not correctly sized'            
             raise Exception
     except Exception as e:
         print(ERR_STATEMENT)
