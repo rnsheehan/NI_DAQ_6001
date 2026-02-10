@@ -647,10 +647,10 @@ def Move_Files(destination, file_list, loud = False):
                         # move file to new destination
                         os.rename(file_list[i], destination + file_list[i])
             else:
-                ERR_STATEMENT += "No files moved, file_list is empty"
+                ERR_STATEMENT += "\nNo files moved, file_list is empty"
                 raise Exception
         else:
-            ERR_STATEMENT += "Files not moved\n" + "Location:",destination,"does not exist"
+            ERR_STATEMENT += "\nFiles not moved." + "Location:",destination,"does not exist"
             raise Exception
     except Exception as e:
         print(ERR_STATEMENT)
