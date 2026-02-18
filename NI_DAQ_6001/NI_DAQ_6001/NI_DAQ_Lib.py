@@ -513,9 +513,11 @@ def AI_Timed_DC_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = '
                 # This can be optional
                 # Move the files to a more convenient location
                 # The location must exist on your computer, otherwise the files won't be moved
-                DATA_HOME = 'c:/users/robertsheehan/Research/Electronics/uHeater_Control/'
+                #DATA_HOME = 'c:/users/robertsheehan/Research/Electronics/uHeater_Control/'
+                DATA_HOME = 'D:/Rob/Research/Electronics/uHeater_Control/'
 
                 txt_files = glob.glob("AI_DC_Meas*.txt")
+
                 Common.Move_Files(DATA_HOME, txt_files)
 
                 png_files = glob.glob("AI_DC_Meas*.png")
@@ -556,13 +558,13 @@ def Save_Timed_DC_Measurement_Data(physical_channel_str = 'Dev2/ai0:3', device_n
     try:
         c1 = True if total_time > 0 else False
         c2 = True if no_meas > 3 else False
-        c3 = True if avg_arr != numpy.array([]) else False
+        c3 = True if len(avg_arr) > 0 else False
         c4 = True if filename_avg != '' else False
         c5 = True if filename_stdev != '' else False
         c6 = True if filename_stat != '' else False
-        c7 = True if stdev_arr != numpy.array([]) else False
-        c8 = True if counts_arr != numpy.array([]) else False
-        c10 = c1 and c2 and c3 and c4 and c5
+        c7 = True if len(stdev_arr) > 0 else False
+        c8 = True if len(counts_arr) > 0 else False
+        c10 = c1 and c2 and c3 and c4 and c5 and c6 and c7 and c8
 
         if c10:
             # Extract the sample rate per channel
@@ -571,12 +573,16 @@ def Save_Timed_DC_Measurement_Data(physical_channel_str = 'Dev2/ai0:3', device_n
             ai_SR, ai_no_ch = Extract_Sample_Rate(ai_chn_str, device_name)
 
             # Recall numpy.savetxt truncates by default
+            # You could change this by opening the file in append mode first, then subsequently writing to the file
+            # In general you'd want one file for one measurement
             #the_file = open(filename_avg,'w') # open the file for writing, truncating it first
             #the_file.close()
             print("Writing to", filename_avg)
             numpy.savetxt(filename_avg, avg_arr, fmt = "%0.9f", delimiter = ',')
 
             # Recall numpy.savetxt truncates by default            
+            # You could change this by opening the file in append mode first, then subsequently writing to the file
+            # In general you'd want one file for one measurement
             #the_file = open(filename_stdev,'w') # open the file for writing, truncating it first
             #the_file.close()
             print("Writing to", filename_stdev)
@@ -626,7 +632,7 @@ def Analyse_Timed_DC_Measurement(physical_channel_str = 'Dev2/ai0:3', device_nam
     avg_arr (type: numpy array float) contains average measured values from each read channel
     avg_arr is an array with no_meas rows and between 1 and 4 columns
 
-    R. Sheehan 28 - 1 - 2026
+    R. Sheehan 9 - 2 - 2026
     """
     
     FUNC_NAME = ".Analyse_Timed_DC_Measurement()" # use this in exception handling messages
@@ -635,7 +641,7 @@ def Analyse_Timed_DC_Measurement(physical_channel_str = 'Dev2/ai0:3', device_nam
     try:
         c1 = True if total_time > 0 else False
         c2 = True if no_meas > 3 else False
-        c3 = True if avg_arr != numpy.array([]) else False
+        c3 = True if len(avg_arr) > 0 else False
         c4 = True if filename_avg != '' else False
         c10 = c1 and c2 and c3 and c4
 
