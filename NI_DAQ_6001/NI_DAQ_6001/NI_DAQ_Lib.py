@@ -26,8 +26,10 @@ import nitypes.waveform
 os.environ["NIDAQMX_ENABLE_WAVEFORM_SUPPORT"] = "1"
 
 import re
+import glob
 import math
 import numpy
+import scipy
 import time
 import nidaqmx
 import nitypes
