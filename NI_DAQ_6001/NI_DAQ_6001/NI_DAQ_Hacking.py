@@ -364,6 +364,7 @@ def AI_Read_Test():
 
     except Exception as e:
         print(ERR_STATEMENT)
+
         print(e)
 
 def AO_AI_Loopback_Test():
@@ -778,7 +779,7 @@ def AO_AI_Waveform_Write_Read_Test():
         ao_task = nidaqmx.Task()
         ao_chn_str = dev_name + '/ao0'
         ao_task.ao_channels.add_ao_voltage_chan(ao_chn_str, min_val = -10, max_val = +10)
-        ao_SR, ao_no_ch = Extract_Sample_Rate(ao_chn_str, dev_name)
+        ao_SR, ao_no_ch = NI_DAQ_Lib.Extract_Sample_Rate(ao_chn_str, dev_name)
         ao_task.timing.cfg_samp_clk_timing(rate = ao_SR, sample_mode = nidaqmx.constants.AcquisitionType.FINITE, 
                                            samps_per_chan = ao_SR, active_edge = nidaqmx.constants.Edge.RISING)
 
@@ -787,7 +788,7 @@ def AO_AI_Waveform_Write_Read_Test():
         amp = 1.0 # wave amplitude
         phase = 0.0
         t0 = 0.0
-        timeInt, w_vals = Generate_Sine_Waveform(ao_SR, ao_SR, t0, nu, amp, phase)
+        timeInt, w_vals = NI_DAQ_Lib.Generate_Sine_Waveform(ao_SR, ao_SR, t0, nu, amp, phase)
 
         # https://nitypes.readthedocs.io/en/latest/autoapi/nitypes/waveform/index.html
         # https://nitypes.readthedocs.io/en/latest/autoapi/nitypes/waveform/Timing.html
@@ -810,7 +811,7 @@ def AO_AI_Waveform_Write_Read_Test():
         # Configure Analog Input
         ai_task = nidaqmx.Task()        
         ai_chn_str = dev_name + '/ai0'
-        ai_SR, ai_no_ch = Extract_Sample_Rate(ai_chn_str, dev_name)
+        ai_SR, ai_no_ch = NI_DAQ_Lib.Extract_Sample_Rate(ai_chn_str, dev_name)
         ai_task.ai_channels.add_ai_voltage_chan(ai_chn_str, terminal_config = nidaqmx.constants.TerminalConfiguration.DIFF, 
                                                 min_val = -10, max_val = +10)
         ai_task.timing.cfg_samp_clk_timing(ai_SR, sample_mode = nidaqmx.constants.AcquisitionType.FINITE, 
@@ -857,7 +858,7 @@ def AO_Waveform_Write_Test():
 
     # Configure the analog output to write continuously
     ao_chn_str = "Dev2/ao0"
-    ao_SR, _ = Extract_Sample_Rate(ao_chn_str, 'Dev2')
+    ao_SR, _ = NI_DAQ_Lib.Extract_Sample_Rate(ao_chn_str, 'Dev2')
     number_of_samples = ao_SR
 
     ao_task = nidaqmx.Task()
@@ -874,13 +875,13 @@ def AO_Waveform_Write_Test():
     amp = math.sqrt(2) # wave amplitude
     phase = 0.0
     t0 = 0.0
-    #timeInt, data = Generate_Sine_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase)
-    #timeInt, data = Generate_Triangle_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase, pulsed = True)
-    timeInt, data = Generate_Square_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase, pulsed = False)
+    #timeInt, data = NI_DAQ_Lib.Generate_Sine_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase)
+    #timeInt, data = NI_DAQ_Lib.Generate_Triangle_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase, pulsed = True)
+    timeInt, data = NI_DAQ_Lib.Generate_Square_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase, pulsed = False)
 
     # Configure the analog input
     ai_chn_str = "Dev2/ai3"
-    ai_SR, _ = Extract_Sample_Rate(ai_chn_str, 'Dev2')
+    ai_SR, _ = NI_DAQ_Lib.Extract_Sample_Rate(ai_chn_str, 'Dev2')
     number_of_samples = ai_SR
 
     # Configure Analog Input
