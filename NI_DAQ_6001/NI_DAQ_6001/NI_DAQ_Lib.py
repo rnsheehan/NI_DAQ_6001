@@ -34,6 +34,7 @@ import time
 import nidaqmx
 import nitypes
 import datetime
+import random
 
 import Sweep_Interval
 import Plotting
@@ -234,7 +235,7 @@ def Generate_Triangle_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency =
         print(ERR_STATEMENT)
         print(e)
 
-def Generate_Random_Pulse_Waveform(sample_rate, no_smpls, t_start = 0.0, amplitude = 1.0):
+def Generate_Random_Pulse_Waveform(sample_rate, no_smpls, t_start = 0.0, amplitude = 1.0, t_pulse = 10.0):
     """
     Generate a random pulse waveform
 
@@ -243,7 +244,7 @@ def Generate_Random_Pulse_Waveform(sample_rate, no_smpls, t_start = 0.0, amplitu
     t_start(float) time at which triangle wave must start in units of second
     
     amplitude(float) in units of volt in range [0, 10]
-    pwidth(float) in units of ms
+    t_pulse(float) in units of second
     
     Output is a tuple with the following items
     timeInterval(SweepSpace object) that contains the data needed to generate time samples using numpy.linspace
@@ -252,35 +253,39 @@ def Generate_Random_Pulse_Waveform(sample_rate, no_smpls, t_start = 0.0, amplitu
     R. Sheehan 23 - 2 - 2026
     """
 
-    # notes on triangular wave
-    # https://en.wikipedia.org/wiki/Triangle_wave
-    # https://mathworld.wolfram.com/TriangleWave.html
+    # Assume pulses are of finite width t_pulse (ms), where t_pulse_min > (1/SR)
+    # Within each pulse period decide randomly if the next pulse period will be On / Off
+    # Assign a pulse value to each time step
+    # This will be periodic by default, is the answer to make the waveform duration very long?
+    # For notes on random number generation in python see: https://docs.python.org/3/library/random.html
+    # On seeding: https://stackoverflow.com/questions/817705/pythons-random-what-happens-if-i-dont-use-seedsomevalue
+    # On seeding: https://stackoverflow.com/questions/33849960/is-it-necessary-to-call-seed-when-using-random-in-python
     
-    FUNC_NAME = ".Generate_Pulse_Waveform()" # use this in exception handling messages
+    FUNC_NAME = ".Generate_Random_Pulse_Waveform()" # use this in exception handling messages
     ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
 
     try:
+        deltaT = ( 1.0 / float(sample_rate) )
+        
         c1 = True if sample_rate > 0 else False
         c2 = True if no_smpls > 0 else False
-        c3 = True
+        c3 = True if t_pulse > deltaT else False
         c4 = True if math.fabs(amplitude) <= 10 else False
         c10 = c1 and c2 and c3 and c4
-
+        
         if c10:
-            deltaT = ( 1.0 / float(sample_rate) )
             t0 = t_start
-            two_pi_nu = 2.0 * math.pi * frequency
-            amp = (2.0 * amplitude) / math.pi
             t_vals = numpy.array([]) # instantiate an empty numpy array
             w_vals = numpy.array([]) # instantiate an empty numpy array
+            random.seed() # seed the rng with the current system time
             count = 0
+            ndT = t_pulse * sample_rate # How many deltaT fit inside t_pulse? 
             while count < no_smpls:
-                sval = math.sin(two_pi_nu * t0 + phase)
-                val = amp * math.asin( sval )
-                if pulsed:
-                    w_vals = numpy.append(w_vals, math.fabs(val) ) # convert to triangular pulses by taking math.fabs(val)
-                else:
-                    w_vals = numpy.append(w_vals, val )
+                # decide if the pulse is On / Off
+                # randomise every time t0 is integer multiple of t_pulse
+                if count % ndT == 0:
+                    val = amplitude if random.random() >= 0.5 else 0.0
+                w_vals = numpy.append(w_vals, val )
                 t0 += deltaT
                 count += 1
 

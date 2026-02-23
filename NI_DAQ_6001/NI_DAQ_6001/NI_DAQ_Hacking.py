@@ -229,7 +229,7 @@ def Making_Waves():
         
         Plotting.plot_multiple_curves([[t_vals, w_vals], [t_vals, ww_vals]], args)
 
-    PLOT_PULSE_WAVE = True
+    PLOT_PULSE_WAVE = False
     if PLOT_PULSE_WAVE:
         
         nu = 3 # frequency in units of Hz
@@ -297,6 +297,27 @@ def Making_Waves():
         args.plt_title = r'N$_{smpls}$ = %(v1)d, $\delta$t = %(v2)0.3f (ms)'%{"v1":len(t_vals), "v2":1000.0*dT_AO}
         
         Plotting.plot_multiple_curves([[t_vals, w_vals], [t_vals, ww_vals]], args)    
+
+    PLOT_RANDOM_WAVE = True
+    if PLOT_RANDOM_WAVE:
+        
+        amp = 1.0 # wave amplitude
+        t0 = 0.0
+        tpulse = 100 # pulse width in milliseconds
+
+        timeInt, w_vals = NI_DAQ_Lib.Generate_Random_Pulse_Waveform(AO_SR_MAX, 5 * AO_SR_MAX, t0, amp, tpulse / 1000.0)
+        t_vals, dT_AO = numpy.linspace(timeInt.start, timeInt.stop, timeInt.Nsteps, endpoint = True, retstep = True)
+
+        # generate a plot
+        args = Plotting.plot_arg_single()
+
+        args.loud = True
+        args.x_label = 'Time (s)'
+        args.y_label = 'Random Pulse Train'
+        args.marker = Plotting.labs_lins[3]
+        args.plt_title = r'N$_{smpls}$ = %(v1)d, $\delta$t = %(v2)0.3f (ms)'%{"v1":len(t_vals), "v2":1000.0*dT_AO}
+
+        Plotting.plot_single_curve(t_vals, w_vals, args)
 
 def AO_Write_Test():
     """
