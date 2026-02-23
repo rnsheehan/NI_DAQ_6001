@@ -810,6 +810,7 @@ def AO_AI_Waveform_Write_Read_Test():
         phase = 0.0
         t0 = 0.0
         timeInt, w_vals = NI_DAQ_Lib.Generate_Sine_Waveform(ao_SR, ao_SR, t0, nu, amp, phase)
+        #timeInt, w_vals = NI_DAQ_Lib.Generate_Random_Pulse_Waveform(AO_SR_MAX, 5 * AO_SR_MAX, t0, amp, tpulse / 1000.0)
 
         # https://nitypes.readthedocs.io/en/latest/autoapi/nitypes/waveform/index.html
         # https://nitypes.readthedocs.io/en/latest/autoapi/nitypes/waveform/Timing.html
@@ -898,10 +899,12 @@ def AO_Waveform_Write_Test():
     t0 = 0.0
     #timeInt, data = NI_DAQ_Lib.Generate_Sine_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase)
     #timeInt, data = NI_DAQ_Lib.Generate_Triangle_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase, pulsed = True)
-    timeInt, data = NI_DAQ_Lib.Generate_Square_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase, pulsed = False)
+    #timeInt, data = NI_DAQ_Lib.Generate_Square_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase, pulsed = False)
+    t_pulse = 50.0 # pulse width in units of ms
+    timeInt, data = NI_DAQ_Lib.Generate_Random_Pulse_Waveform(ao_SR, number_of_samples, t0, amp, t_pulse / 1000.0)
 
     # Configure the analog input
-    ai_chn_str = "Dev2/ai3"
+    ai_chn_str = "Dev2/ai0"
     ai_SR, _ = NI_DAQ_Lib.Extract_Sample_Rate(ai_chn_str, 'Dev2')
     number_of_samples = ai_SR
 

@@ -29,7 +29,7 @@ if __name__ == '__main__':
 
     print(pwd)
     
-    NI_DAQ_Hacking.Making_Waves()
+    #NI_DAQ_Hacking.Making_Waves()
 
     #NI_DAQ_Hacking.AO_Write_Test()
     
@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
     #NI_DAQ_Hacking.DC_Sweep_Diode()
 
-    #NI_DAQ_Hacking.AO_Waveform_Write_Test()
+    NI_DAQ_Hacking.AO_Waveform_Write_Test()
 
     #NI_DAQ_Hacking.AI_Waveform_Read_Test()
 
