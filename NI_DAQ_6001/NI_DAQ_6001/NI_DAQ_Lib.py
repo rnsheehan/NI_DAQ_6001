@@ -235,7 +235,7 @@ def Generate_Triangle_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency =
         print(ERR_STATEMENT)
         print(e)
 
-def Generate_Random_Pulse_Waveform(sample_rate, no_smpls, t_start = 0.0, amplitude = 1.0, t_pulse = 10.0):
+def Generate_Random_Pulse_Waveform(sample_rate, no_smpls, t_start = 0.0, amplitude = 1.0, t_pulse = 0.1, uniform = True):
     """
     Generate a random pulse waveform
 
@@ -245,6 +245,7 @@ def Generate_Random_Pulse_Waveform(sample_rate, no_smpls, t_start = 0.0, amplitu
     
     amplitude(float) in units of volt in range [0, 10]
     t_pulse(float) in units of second
+    uniform(boolean) specifies equal amplitude pulses when True, arbitrary amplitude value when False
     
     Output is a tuple with the following items
     timeInterval(SweepSpace object) that contains the data needed to generate time samples using numpy.linspace
@@ -265,7 +266,7 @@ def Generate_Random_Pulse_Waveform(sample_rate, no_smpls, t_start = 0.0, amplitu
     ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
 
     try:
-        deltaT = ( 1.0 / float(sample_rate) )
+        deltaT = ( 1.0 / float(sample_rate) ) # time interval between AO samples in units of second
         
         c1 = True if sample_rate > 0 else False
         c2 = True if no_smpls > 0 else False
@@ -284,7 +285,10 @@ def Generate_Random_Pulse_Waveform(sample_rate, no_smpls, t_start = 0.0, amplitu
                 # decide if the pulse is On / Off
                 # randomise every time t0 is integer multiple of t_pulse
                 if count % ndT == 0:
-                    val = amplitude if random.random() >= 0.5 else 0.0
+                    if uniform:
+                        val = amplitude if random.random() >= 0.5 else 0.0
+                    else:
+                        val = -10.0 + 20.0 * random.random() # generate random number in range [-10, +10] using formula a + (b - a) * random()
                 w_vals = numpy.append(w_vals, val )
                 t0 += deltaT
                 count += 1
@@ -297,7 +301,7 @@ def Generate_Random_Pulse_Waveform(sample_rate, no_smpls, t_start = 0.0, amplitu
         else:
             if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nsample_rate is negative'
             if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nno_smpls is negative'
-            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nfrequency is negative'
+            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nt_pulse is too short'
             if c4 is False: ERR_STATEMENT = ERR_STATEMENT + '\namplitude is out of range for NI-DAQ'
             raise Exception
     except Exception as e:

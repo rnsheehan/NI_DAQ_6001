@@ -303,9 +303,10 @@ def Making_Waves():
         
         amp = 1.0 # wave amplitude
         t0 = 0.0
-        tpulse = 100 # pulse width in milliseconds
+        tpulse = 50 # pulse width in milliseconds
+        uniform = True # uniform amplitude pulse output? 
 
-        timeInt, w_vals = NI_DAQ_Lib.Generate_Random_Pulse_Waveform(AO_SR_MAX, 5 * AO_SR_MAX, t0, amp, tpulse / 1000.0)
+        timeInt, w_vals = NI_DAQ_Lib.Generate_Random_Pulse_Waveform(AO_SR_MAX, 5 * AO_SR_MAX, t0, amp, tpulse / 1000.0, uniform)
         t_vals, dT_AO = numpy.linspace(timeInt.start, timeInt.stop, timeInt.Nsteps, endpoint = True, retstep = True)
 
         # generate a plot
