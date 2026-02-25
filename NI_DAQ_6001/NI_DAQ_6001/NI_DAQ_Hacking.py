@@ -663,12 +663,12 @@ def DC_Sweep_Diode_Test():
         ao_task = nidaqmx.Task()
         ao_chn_str = dev_name + '/ao0:1'
         ao_task.ao_channels.add_ao_voltage_chan(ao_chn_str, min_val = -10, max_val = +10)
-        ao_SR, ao_no_ch = Extract_Sample_Rate(ao_chn_str, dev_name)
+        ao_SR, ao_no_ch = NI_DAQ_Lib.Extract_Sample_Rate(ao_chn_str, dev_name)
         
         # Configure Analog Input
         ai_task = nidaqmx.Task()        
         ai_chn_str = dev_name + '/ai0:3'
-        ai_SR, ai_no_ch = Extract_Sample_Rate(ai_chn_str, dev_name)
+        ai_SR, ai_no_ch = NI_DAQ_Lib.Extract_Sample_Rate(ai_chn_str, dev_name)
         ai_task.ai_channels.add_ai_voltage_chan(ai_chn_str, terminal_config = nidaqmx.constants.TerminalConfiguration.DIFF, 
                                                 min_val = -10, max_val = +10)
         ai_task.timing.cfg_samp_clk_timing(ai_SR, sample_mode = nidaqmx.constants.AcquisitionType.FINITE, 
@@ -898,11 +898,12 @@ def AO_Waveform_Write_Test():
     amp = math.sqrt(2) # wave amplitude
     phase = 0.0
     t0 = 0.0
-    #timeInt, data = NI_DAQ_Lib.Generate_Sine_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase)
+    timeInt, data = NI_DAQ_Lib.Generate_Sine_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase)
     #timeInt, data = NI_DAQ_Lib.Generate_Triangle_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase, pulsed = True)
     #timeInt, data = NI_DAQ_Lib.Generate_Square_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase, pulsed = False)
-    t_pulse = 50.0 # pulse width in units of ms
-    timeInt, data = NI_DAQ_Lib.Generate_Random_Pulse_Waveform(ao_SR, number_of_samples, t0, amp, t_pulse / 1000.0)
+    
+    #t_pulse = 50.0 # pulse width in units of ms
+    #timeInt, data = NI_DAQ_Lib.Generate_Random_Pulse_Waveform(ao_SR, number_of_samples, t0, amp, t_pulse / 1000.0)
 
     # Configure the analog input
     ai_chn_str = "Dev2/ai0"
@@ -923,34 +924,53 @@ def AO_Waveform_Write_Test():
                                         samps_per_chan = number_of_samples, active_edge = nidaqmx.constants.Edge.RISING)
     
     # Write the waveform data until you want to stop
-    ao_task.write(data)
-    ao_task.start()
+    #ao_task.write(data)
+    #ao_task.start()
 
+    #ai_task.start()
+
+    plot.ion() # turning interactive mode on
     count = 0
-    while count < 5:
-        # Read the waveform data into memory
-        ai_task.start()
-        waveform = ai_task.read(nidaqmx.constants.READ_ALL_AVAILABLE)
-
-        t0 = time.time()
+    while count < 10:
+        #t0 = time.time()
+        t0 = 0.0 if count == 0 else tf
         dT = 1.0 / float(ai_SR)
         tf = t0 + number_of_samples * dT
         times = numpy.arange(t0, tf, dT)
+
+        # Write the data from the DAQ
+        #timeInt, data = NI_DAQ_Lib.Generate_Sine_Waveform(ao_SR, number_of_samples, t0, nu, amp, phase)
+
+        t_pulse = 50.0 # pulse width in units of ms
+        timeInt, data = NI_DAQ_Lib.Generate_Random_Pulse_Waveform(ao_SR, number_of_samples, t0, amp, t_pulse / 1000.0, uniform = True)
+
+        # Write the waveform data until you want to stop
+        ao_task.write(data)
+        ao_task.start()
+
+        # Read the waveform data into memory
+        ai_task.start()
+        waveform = ai_task.read(nidaqmx.constants.READ_ALL_AVAILABLE)
         
         plot.plot(times, waveform)
         # plot.xlabel("Seconds")
         # plot.ylabel(waveform.units)
         # plot.title(waveform.channel_name)
         plot.grid(True)
-        plot.show()
+        plot.pause(0.01)
+        #plot.show()
 
         ai_task.stop()
+        ao_task.stop()
 
         count += 1
 
+    #plot.ioff()
+
     input("Generating voltage continuously. Press Enter to stop.\n")
 
-    ao_task.stop()
+    #ai_task.stop()
+    #ao_task.stop()
 
     ao_task.close()
 

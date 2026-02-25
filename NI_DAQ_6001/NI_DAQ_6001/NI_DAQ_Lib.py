@@ -17,6 +17,7 @@ R. Sheehan 21 - 11 - 2025
 # R. Sheehan 3 - 12 - 2025
 
 # import required libraries
+from ast import Try
 import os
 from pickle import FALSE
 from tkinter import EXCEPTION
@@ -388,6 +389,74 @@ def Extract_Sample_Rate(physical_channel_str, device_name, loud = False):
         else:
             if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in physical_channel_str'
             if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in device_name'
+            raise Exception
+    except Exception as e:
+        print(ERR_STATEMENT)
+        print(e)
+
+def AO_DC_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', voltage = [0.0, 0.0]):
+
+    """
+    Configure the NI-DAQ to output DC signal continuously
+
+    physical_channel_str(string) tells the DAQ which channels it wants to work from
+    device_name(string) tells the PC what handle has been assigned to the DAQ by the PC
+    voltage(float or list) tells the DAQ which voltages should be output on AO channels
+
+    R. Sheehan 25 - 2 - 2026
+    """
+
+    FUNC_NAME = ".AO_DC_Output()" # use this in exception handling messages
+    ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
+
+    try:
+        c1 = True if physical_channel_str != '' else False
+        c2 = True if device_name != '' else False
+        c3 = True if 'o' in physical_channel_str else False
+        c10 = c1 and c2 and c3
+
+        if c10:
+            # Extract the sample rate per channel
+            ao_chn_str = physical_channel_str
+
+            ao_SR, ao_no_ch = Extract_Sample_Rate(ao_chn_str, device_name)
+            number_of_samples = ao_SR
+
+            # Check that the no. voltages required equals the no. AO channels selected 
+            # https://docs.python.org/3/library/functions.html#isinstance
+            if isinstance(voltage, list):
+                # voltage input as a list and no. elements in list equals no. channels
+                # voltage could be a 1- or 2-element list
+                c11 = len(voltage) == ao_no_ch
+            else:
+                # voltage input as a float and no. channels equals one
+                c11 = Common.isfloat(voltage) and ao_no_ch == 1 
+
+            if c11:
+                # Configure the analog output to write continuously
+                ao_task = nidaqmx.Task()
+
+                ao_task.ao_channels.add_ao_voltage_chan(ao_chn_str, min_val = -10, max_val = +10)
+
+                # technically this is not necessary for DC output since you are not outputting a waveform
+                # ao_task.timing.cfg_samp_clk_timing(rate = ao_SR, sample_mode = nidaqmx.constants.AcquisitionType.CONTINUOUS, 
+                #                                    samps_per_chan = number_of_samples, active_edge = nidaqmx.constants.Edge.RISING)
+                # actual_sampling_rate = ao_task.timing.samp_clk_rate # read the actual sample rate
+
+                ao_task.start()
+
+                ao_task.write(voltage) # NI-DAQ will persist with last set DC value
+            
+                ao_task.stop()
+
+                ao_task.close()
+            else:
+                ERR_STATEMENT = ERR_STATEMENT + "\nNo. AO channels != No. Voltages"
+                raise Exception
+        else:
+            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in physical_channel_str'
+            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in device_name'
+            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible using ' + physical_channel_str
             raise Exception
     except Exception as e:
         print(ERR_STATEMENT)
