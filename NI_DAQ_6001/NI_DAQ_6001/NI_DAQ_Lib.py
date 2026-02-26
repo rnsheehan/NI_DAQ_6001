@@ -531,7 +531,7 @@ def AO_DC_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', volt
         print(ERR_STATEMENT)
         print(e)
 
-def AO_AC_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', waveform_choice = 'Sine', frequency = 10.0, amplitude = 1.0, offset = 0.0, phase = 0.0):
+def AO_AC_Output(physical_channel_str = 'Dev2/ao1', device_name = 'Dev2', waveform_choice = 'Sine', frequency = 10.0, amplitude = 1.0, offset = 0.0, phase = 0.0):
 
     """
     Configure the NI-DAQ to output AC signal continuously
@@ -596,6 +596,9 @@ def AO_AC_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', wave
                 else:
                     _, data = Generate_Sine_Waveform(ao_SR, number_of_samples, t0, frequency, amplitude, phase)
 
+                if offset != 0.0:
+                    data = data + offset
+
                 ao_task.write(data)
 
                 ao_task.start()
@@ -622,7 +625,7 @@ def AO_AC_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', wave
         print(ERR_STATEMENT)
         print(e)
 
-def AO_Random_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', waveform_choice = 'PRBS', pulse_width = 0.01, amplitude = 1.0, offset = 0.0):
+def AO_Random_Output(physical_channel_str = 'Dev2/ao0', device_name = 'Dev2', waveform_choice = 'PRBS', pulse_width = 0.01, amplitude = 1.0):
 
     """
     Configure the NI-DAQ to output a sequence of random pulses
@@ -632,7 +635,6 @@ def AO_Random_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', 
     waveform_choice(string) string describing the choice of waveform output
     pulse_width(float) minimal pulse width in units of seconds
     amplitude(float) operating amplitude of the AO output in units of V
-    offset(float) DC offset of the AO output in units of V
 
     R. Sheehan 26 - 2 - 2026
     """
@@ -644,11 +646,9 @@ def AO_Random_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', 
         c1 = True if physical_channel_str != '' else False
         c2 = True if device_name != '' else False
         c3 = True if 'o' in physical_channel_str else False
-        c5 = True if math.fabs(amplitude) + math.fabs(offset) < 10.0 else False
         c6 = True if 0.0 < math.fabs(amplitude) < 10.0 else False
-        c7 = True if 0.0 <= math.fabs(offset) < 10.0 else False
         c8 = True if waveform_choice in Waveforms else False
-        c10 = c1 and c2 and c3 and c5 and c6 and c7 and c8
+        c10 = c1 and c2 and c3 and c6 and c8
 
         if c10:
             # Extract the sample rate per channel
@@ -674,9 +674,7 @@ def AO_Random_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', 
                     print("Pulse width = %(v1)0.2f ( ms ), Pulse width minimum = %(v2)0.2f ( ms )"%{"v1":1000.0*pulse_width, "v2":1000.0*dT})
                     print("NI-DAQ 6001 outputting continuously. Press Ctrl + C to stop.\n")
                     count = 0
-                    #max_counts = 500
                     tf = 0.0
-                    stop_str = 'z'
                     while True:
                         # Generate the waveform data
                         t0 = 0.0 if count == 0 else tf
@@ -694,8 +692,12 @@ def AO_Random_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', 
 
                         ao_task.stop()
                 
-                    ao_task.close()
+                    # If you were running the while loop for a finite number of calls you would release resources associated with NI-DAQ here
+                    #ao_task.close()
+
                 except KeyboardInterrupt:
+                    # Ordinarily, you can ignore any errors associated with KeyboardInterrupt, use pass to ignore them
+                    # pass
                     # Release the resources associated with NI-DAQ after KeyboardInterrupt
                     ao_task.stop()
                     ao_task.close()
@@ -707,9 +709,7 @@ def AO_Random_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', 
             if c1 is False: ERR_STATEMENT += '\nNo data contained in physical_channel_str'
             if c2 is False: ERR_STATEMENT += '\nNo data contained in device_name'
             if c3 is False: ERR_STATEMENT += '\nAnalog Output not possible using ' + physical_channel_str
-            if c5 is False: ERR_STATEMENT += '\nAnalog Output not possible for |amp| + |off| > 10 ( V )'
             if c6 is False: ERR_STATEMENT += '\nAnalog Output not possible for |amp| > 10 ( V )'
-            if c7 is False: ERR_STATEMENT += '\nAnalog Output not possible for |off| > 10 ( V )'
             if c8 is False: ERR_STATEMENT += '\nAnalog Output not possible for waveform ' + waveform_choice
             raise Exception
     except Exception as e:
