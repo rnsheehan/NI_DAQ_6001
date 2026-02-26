@@ -21,6 +21,7 @@ from ast import Try
 import os
 from pickle import FALSE
 from tkinter import EXCEPTION
+import wave
 
 import nitypes.waveform
 
@@ -44,6 +45,9 @@ import Common
 MOD_NAME_STR = "NI_DAQ_Lib"
 AI_SR_MAX = 20000 # max sample rate on single AI channel, units of Hz
 AO_SR_MAX = 5000 # max sample rate on single AO channel, units of Hz
+
+# Dictionary for Accessing the Different Waveform Types
+Waveforms = {"Sine":0, "Square":1, "Triangle":2, "Ramp":3, "Sawtooth":4,  "Square Unipolar":5, "Triangle Unipolar":6, "PRBS":7, "Random":8}
 
 # Actual routines that you would want with a DAQ
 
@@ -103,7 +107,7 @@ def Generate_Sine_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency = 1.0
         print(ERR_STATEMENT)
         print(e)
 
-def Generate_Square_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency = 1.0, amplitude = 1.0, phase = 0.0, pulsed = False):
+def Generate_Square_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency = 1.0, amplitude = 1.0, phase = 0.0, unipolar = False):
     """
     Generate a square waveform
 
@@ -113,7 +117,7 @@ def Generate_Square_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency = 1
     frequency(float) in units of Hz
     amplitude(float) in units of volt in range [-10, 10]
     phase(float) is dimensionless
-    pulsed(boolean) decides whether or not to output non-negative pulses
+    unipolar(boolean) decides whether or not output is all positive, or a mix of positive and negative
 
     Output is a tuple with the following items
     timeInterval(SweepSpace object) that contains the data needed to generate time samples using numpy.linspace
@@ -148,7 +152,7 @@ def Generate_Square_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency = 1
                 # python does not have a built-in signum function, but it does have copysign which can be used
                 # copysign(x,y): Return x with the sign of y
                 val = math.copysign(amplitude, sval) # sq wave = signum (sine wave)
-                if pulsed:
+                if unipolar:
                     w_vals = numpy.append(w_vals, val if val > 0.0 else 0.0 ) # only want positive portion of sq wave
                 else:
                     w_vals = numpy.append(w_vals, val)
@@ -170,7 +174,7 @@ def Generate_Square_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency = 1
         print(ERR_STATEMENT)
         print(e)
 
-def Generate_Triangle_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency = 1.0, amplitude = 1.0, phase = 0.0, pulsed = False):
+def Generate_Triangle_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency = 1.0, amplitude = 1.0, phase = 0.0, unipolar = False):
     """
     Generate a triangle waveform
 
@@ -180,7 +184,7 @@ def Generate_Triangle_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency =
     frequency(float) in units of Hz
     amplitude(float) in units of volt in range [-10, 10]
     phase(float) is dimensionless
-    pulsed(boolean) decides whether or not to output non-negative pulses
+    unipolar(boolean) decides whether or not output is all positive, or a mix of positive and negative
 
     Output is a tuple with the following items
     timeInterval(SweepSpace object) that contains the data needed to generate time samples using numpy.linspace
@@ -214,10 +218,73 @@ def Generate_Triangle_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency =
             while count < no_smpls:
                 sval = math.sin(two_pi_nu * t0 + phase)
                 val = amp * math.asin( sval )
-                if pulsed:
-                    w_vals = numpy.append(w_vals, math.fabs(val) ) # convert to triangular pulses by taking math.fabs(val)
+                if unipolar:
+                    w_vals = numpy.append(w_vals, math.fabs(val) ) # convert to strictly positive triangular pulses by taking math.fabs(val)
                 else:
                     w_vals = numpy.append(w_vals, val )
+                t0 += deltaT
+                count += 1
+
+            # instantiate a SweepSpace object to enable time samples to be generated later using 
+            # numpy.linspace(timeInterval.start, timeInterval.stop, timeInterval.Nsteps, endpoint=True, retstep=True)
+            timeInterval = Sweep_Interval.SweepSpace(no_smpls, t_start, t0)
+            
+            return (timeInterval, w_vals)
+        else:
+            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nsample_rate is negative'
+            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nno_smpls is negative'
+            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nfrequency is negative'
+            if c4 is False: ERR_STATEMENT = ERR_STATEMENT + '\namplitude is out of range for NI-DAQ'
+            raise Exception
+    except Exception as e:
+        print(ERR_STATEMENT)
+        print(e)
+
+def Generate_Ramp_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency = 1.0, amplitude = 1.0, phase = 0.0):
+    """
+    Generate a ramp or sawtooth waveform
+
+    Inputs
+    sample_rate(int) and no_smpls(int) to be determined by NI-DAQ AO
+    t_start(float) time at which triangle wave must start in units of second
+    frequency(float) in units of Hz
+    amplitude(float) in units of volt in range [-10, 10]
+    phase(float) is dimensionless
+
+    Output is a tuple with the following items
+    timeInterval(SweepSpace object) that contains the data needed to generate time samples using numpy.linspace
+    w_vals(float numpy array) contains triangle waveform values
+
+    R. Sheehan 26 - 2 - 2026
+    """
+
+    # notes on ramp wave
+    # https://en.wikipedia.org/wiki/Triangle_wave
+    # https://mathworld.wolfram.com/SawtoothWave.html
+    # https://docs.python.org/3/library/math.html#math.modf
+    
+    FUNC_NAME = ".Generate_Ramp_Waveform()" # use this in exception handling messages
+    ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
+
+    try:
+        c1 = True if sample_rate > 0 else False
+        c2 = True if no_smpls > 0 else False
+        c3 = True if frequency > 0 else False
+        c4 = True if math.fabs(amplitude) <= 10 else False
+        c10 = c1 and c2 and c3 and c4
+
+        if c10:
+            deltaT = ( 1.0 / float(sample_rate) )
+            t0 = t_start
+            two_pi_nu = 2.0 * math.pi * frequency
+            t_vals = numpy.array([]) # instantiate an empty numpy array
+            w_vals = numpy.array([]) # instantiate an empty numpy array
+            count = 0
+            while count < no_smpls:
+                sval = two_pi_nu * t0 + phase
+                val = amplitude * (sval - math.floor(sval))
+                #val = amplitude * math.modf( sval )[0]
+                w_vals = numpy.append(w_vals, val)
                 t0 += deltaT
                 count += 1
 
@@ -394,6 +461,8 @@ def Extract_Sample_Rate(physical_channel_str, device_name, loud = False):
         print(ERR_STATEMENT)
         print(e)
 
+# Analog Output Methods
+
 def AO_DC_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', voltage = [0.0, 0.0]):
 
     """
@@ -461,6 +530,193 @@ def AO_DC_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', volt
     except Exception as e:
         print(ERR_STATEMENT)
         print(e)
+
+def AO_AC_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', waveform_choice = 'Sine', frequency = 10.0, amplitude = 1.0, offset = 0.0, phase = 0.0):
+
+    """
+    Configure the NI-DAQ to output AC signal continuously
+
+    physical_channel_str(string) tells the DAQ which channels it wants to work from
+    device_name(string) tells the PC what handle has been assigned to the DAQ by the PC
+    waveform_choice(string) string describing the choice of waveform output
+    frequency(float) operating frequency of the AC output in units of Hz
+    amplitude(float) operating amplitude of the AC output in units of V
+    offset(float) DC offset of the AC output in units of V
+    phase(float) phase offset for the AC output, dimensionless
+
+    R. Sheehan 26 - 2 - 2026
+    """
+
+    FUNC_NAME = ".AO_AC_Output()" # use this in exception handling messages
+    ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
+
+    try:
+        c1 = True if physical_channel_str != '' else False
+        c2 = True if device_name != '' else False
+        c3 = True if 'o' in physical_channel_str else False
+        # Theoretically possible to output at f <= SR / 2, practically speaking require f < SR / 8 for smooth output
+        c4 = True if frequency < AO_SR_MAX>>3 else False
+        c5 = True if math.fabs(amplitude) + math.fabs(offset) < 10.0 else False
+        c6 = True if 0.0 < math.fabs(amplitude) < 10.0 else False
+        c7 = True if 0.0 <= math.fabs(offset) < 10.0 else False
+        c8 = True if waveform_choice in Waveforms else False
+        c10 = c1 and c2 and c3 and c4 and c5 and c6 and c7 and c8
+
+        if c10:
+            # Extract the sample rate per channel
+            ao_chn_str = physical_channel_str
+
+            ao_SR, ao_no_ch = Extract_Sample_Rate(ao_chn_str, device_name)
+            number_of_samples = ao_SR
+
+            if ao_no_ch == 1:
+                # Configure the analog output to write continuously
+                ao_task = nidaqmx.Task()
+
+                ao_task.ao_channels.add_ao_voltage_chan(ao_chn_str, min_val = -10, max_val = +10)
+
+                ao_task.timing.cfg_samp_clk_timing(rate = ao_SR, sample_mode = nidaqmx.constants.AcquisitionType.CONTINUOUS, 
+                                                   samps_per_chan = number_of_samples, active_edge = nidaqmx.constants.Edge.RISING)
+                actual_sampling_rate = ao_task.timing.samp_clk_rate # read the actual sample rate
+
+                # Generate the waveform data
+                t0 = 0.0
+                if waveform_choice == 'Sine':
+                    _, data = Generate_Sine_Waveform(ao_SR, number_of_samples, t0, frequency, amplitude, phase)
+                elif waveform_choice == 'Square':
+                    _, data = Generate_Square_Waveform(ao_SR, number_of_samples, t0, frequency, amplitude, phase)
+                elif waveform_choice == 'Triangle':
+                    _, data = Generate_Triangle_Waveform(ao_SR, number_of_samples, t0, frequency, amplitude, phase)
+                elif waveform_choice == 'Square Unipolar':
+                    _, data = Generate_Square_Waveform(ao_SR, number_of_samples, t0, frequency, amplitude, phase, unipolar = True)
+                elif waveform_choice == 'Triangle Unipolar':
+                    _, data = Generate_Triangle_Waveform(ao_SR, number_of_samples, t0, frequency, amplitude, phase, unipolar = True)
+                elif waveform_choice == 'Ramp' or waveform_choice == 'Sawtooth':
+                    _, data = Generate_Ramp_Waveform(ao_SR, number_of_samples, t0, frequency, amplitude, phase)
+                else:
+                    _, data = Generate_Sine_Waveform(ao_SR, number_of_samples, t0, frequency, amplitude, phase)
+
+                ao_task.write(data)
+
+                ao_task.start()
+                
+                input("NI-DAQ 6001 outputting continuously. Press Enter to stop.\n")
+
+                ao_task.stop()
+
+                ao_task.close()
+            else:
+                ERR_STATEMENT = ERR_STATEMENT + "\nNo. AO channels != 1"
+                raise Exception
+        else:
+            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in physical_channel_str'
+            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in device_name'
+            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible using ' + physical_channel_str
+            if c4 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for f > %(v1)d ( Hz )'%{"v1":AO_SR_MAX>>3}
+            if c5 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for |amp| + |off| > 10 ( V )'
+            if c6 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for |amp| > 10 ( V )'
+            if c7 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for |off| > 10 ( V )'
+            if c8 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for waveform ' + waveform_choice
+            raise Exception
+    except Exception as e:
+        print(ERR_STATEMENT)
+        print(e)
+
+def AO_Random_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', waveform_choice = 'PRBS', pulse_width = 0.01, amplitude = 1.0, offset = 0.0):
+
+    """
+    Configure the NI-DAQ to output a sequence of random pulses
+
+    physical_channel_str(string) tells the DAQ which channels it wants to work from
+    device_name(string) tells the PC what handle has been assigned to the DAQ by the PC
+    waveform_choice(string) string describing the choice of waveform output
+    pulse_width(float) minimal pulse width in units of seconds
+    amplitude(float) operating amplitude of the AO output in units of V
+    offset(float) DC offset of the AO output in units of V
+
+    R. Sheehan 26 - 2 - 2026
+    """
+
+    FUNC_NAME = ".AO_Random_Output()" # use this in exception handling messages
+    ERR_STATEMENT = "Error: " + MOD_NAME_STR + FUNC_NAME
+
+    try:
+        c1 = True if physical_channel_str != '' else False
+        c2 = True if device_name != '' else False
+        c3 = True if 'o' in physical_channel_str else False
+        c5 = True if math.fabs(amplitude) + math.fabs(offset) < 10.0 else False
+        c6 = True if 0.0 < math.fabs(amplitude) < 10.0 else False
+        c7 = True if 0.0 <= math.fabs(offset) < 10.0 else False
+        c8 = True if waveform_choice in Waveforms else False
+        c10 = c1 and c2 and c3 and c5 and c6 and c7 and c8
+
+        if c10:
+            # Extract the sample rate per channel
+            ao_chn_str = physical_channel_str
+
+            ao_SR, ao_no_ch = Extract_Sample_Rate(ao_chn_str, device_name)
+            number_of_samples = ao_SR
+            dT = 1.0 / float(ao_SR)
+
+            c11 = ao_no_ch == 1
+            c12 = True if pulse_width > dT else False
+
+            if c11 and c12:
+                # Configure the analog output to write continuously
+                ao_task = nidaqmx.Task()
+
+                ao_task.ao_channels.add_ao_voltage_chan(ao_chn_str, min_val = -10, max_val = +10)
+
+                ao_task.timing.cfg_samp_clk_timing(rate = ao_SR, sample_mode = nidaqmx.constants.AcquisitionType.CONTINUOUS, 
+                                                    samps_per_chan = number_of_samples, active_edge = nidaqmx.constants.Edge.RISING)
+                actual_sampling_rate = ao_task.timing.samp_clk_rate # read the actual sample rate
+                try:
+                    print("Pulse width = %(v1)0.2f ( ms ), Pulse width minimum = %(v2)0.2f ( ms )"%{"v1":1000.0*pulse_width, "v2":1000.0*dT})
+                    print("NI-DAQ 6001 outputting continuously. Press Ctrl + C to stop.\n")
+                    count = 0
+                    #max_counts = 500
+                    tf = 0.0
+                    stop_str = 'z'
+                    while True:
+                        # Generate the waveform data
+                        t0 = 0.0 if count == 0 else tf
+                        tf = t0 + number_of_samples * dT
+                        if waveform_choice == 'PRBS':
+                            _, data = Generate_Random_Pulse_Waveform(ao_SR, number_of_samples, t0, amplitude, pulse_width, uniform = True)
+                        elif waveform_choice == 'Random':
+                            _, data = Generate_Random_Pulse_Waveform(ao_SR, number_of_samples, t0, amplitude, pulse_width, uniform = False)
+                        else:
+                            _, data = Generate_Random_Pulse_Waveform(ao_SR, number_of_samples, t0, amplitude, pulse_width, uniform = False)
+
+                        ao_task.write(data)
+
+                        ao_task.start()
+
+                        ao_task.stop()
+                
+                    ao_task.close()
+                except KeyboardInterrupt:
+                    # Release the resources associated with NI-DAQ after KeyboardInterrupt
+                    ao_task.stop()
+                    ao_task.close()
+            else:
+                if c11 is False: ERR_STATEMENT = ERR_STATEMENT + "\nNo. AO channels != 1"
+                if c12 is False: ERR_STATEMENT = ERR_STATEMENT + '\nt_pulse is too short'
+                raise Exception
+        else:
+            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in physical_channel_str'
+            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in device_name'
+            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible using ' + physical_channel_str
+            if c5 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for |amp| + |off| > 10 ( V )'
+            if c6 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for |amp| > 10 ( V )'
+            if c7 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for |off| > 10 ( V )'
+            if c8 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for waveform ' + waveform_choice
+            raise Exception
+    except Exception as e:
+        print(ERR_STATEMENT)
+        print(e)
+
+# Analog Input Methods
 
 def AI_Monitor(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev2', loud = False):
     """
