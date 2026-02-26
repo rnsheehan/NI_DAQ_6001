@@ -98,10 +98,10 @@ def Generate_Sine_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency = 1.0
             
             return (timeInterval, w_vals)
         else:
-            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nsample_rate is negative'
-            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nno_smpls is negative'
-            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nfrequency is negative'
-            if c4 is False: ERR_STATEMENT = ERR_STATEMENT + '\namplitude is out of range for NI-DAQ'
+            if c1 is False: ERR_STATEMENT += '\nsample_rate is negative'
+            if c2 is False: ERR_STATEMENT += '\nno_smpls is negative'
+            if c3 is False: ERR_STATEMENT += '\nfrequency is negative'
+            if c4 is False: ERR_STATEMENT += '\namplitude is out of range for NI-DAQ'
             raise Exception
     except Exception as e:
         print(ERR_STATEMENT)
@@ -165,10 +165,10 @@ def Generate_Square_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency = 1
             
             return (timeInterval, w_vals)
         else:
-            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nsample_rate is negative'
-            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nno_smpls is negative'
-            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nfrequency is negative'
-            if c4 is False: ERR_STATEMENT = ERR_STATEMENT + '\namplitude is out of range for NI-DAQ'
+            if c1 is False: ERR_STATEMENT += '\nsample_rate is negative'
+            if c2 is False: ERR_STATEMENT += '\nno_smpls is negative'
+            if c3 is False: ERR_STATEMENT += '\nfrequency is negative'
+            if c4 is False: ERR_STATEMENT += '\namplitude is out of range for NI-DAQ'
             raise Exception
     except Exception as e:
         print(ERR_STATEMENT)
@@ -231,10 +231,10 @@ def Generate_Triangle_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency =
             
             return (timeInterval, w_vals)
         else:
-            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nsample_rate is negative'
-            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nno_smpls is negative'
-            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nfrequency is negative'
-            if c4 is False: ERR_STATEMENT = ERR_STATEMENT + '\namplitude is out of range for NI-DAQ'
+            if c1 is False: ERR_STATEMENT += '\nsample_rate is negative'
+            if c2 is False: ERR_STATEMENT += '\nno_smpls is negative'
+            if c3 is False: ERR_STATEMENT += '\nfrequency is negative'
+            if c4 is False: ERR_STATEMENT += '\namplitude is out of range for NI-DAQ'
             raise Exception
     except Exception as e:
         print(ERR_STATEMENT)
@@ -294,10 +294,10 @@ def Generate_Ramp_Waveform(sample_rate, no_smpls, t_start = 0.0, frequency = 1.0
             
             return (timeInterval, w_vals)
         else:
-            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nsample_rate is negative'
-            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nno_smpls is negative'
-            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nfrequency is negative'
-            if c4 is False: ERR_STATEMENT = ERR_STATEMENT + '\namplitude is out of range for NI-DAQ'
+            if c1 is False: ERR_STATEMENT += '\nsample_rate is negative'
+            if c2 is False: ERR_STATEMENT += '\nno_smpls is negative'
+            if c3 is False: ERR_STATEMENT += '\nfrequency is negative'
+            if c4 is False: ERR_STATEMENT += '\namplitude is out of range for NI-DAQ'
             raise Exception
     except Exception as e:
         print(ERR_STATEMENT)
@@ -367,10 +367,10 @@ def Generate_Random_Pulse_Waveform(sample_rate, no_smpls, t_start = 0.0, amplitu
             
             return (timeInterval, w_vals)
         else:
-            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nsample_rate is negative'
-            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nno_smpls is negative'
-            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nt_pulse is too short'
-            if c4 is False: ERR_STATEMENT = ERR_STATEMENT + '\namplitude is out of range for NI-DAQ'
+            if c1 is False: ERR_STATEMENT += '\nsample_rate is negative'
+            if c2 is False: ERR_STATEMENT += '\nno_smpls is negative'
+            if c3 is False: ERR_STATEMENT += '\nt_pulse is too short'
+            if c4 is False: ERR_STATEMENT += '\namplitude is out of range for NI-DAQ'
             raise Exception
     except Exception as e:
         print(ERR_STATEMENT)
@@ -454,8 +454,8 @@ def Extract_Sample_Rate(physical_channel_str, device_name, loud = False):
 
             return [SR, no_ch]
         else:
-            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in physical_channel_str'
-            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in device_name'
+            if c1 is False: ERR_STATEMENT += '\nNo data contained in physical_channel_str'
+            if c2 is False: ERR_STATEMENT += '\nNo data contained in device_name'
             raise Exception
     except Exception as e:
         print(ERR_STATEMENT)
@@ -520,12 +520,12 @@ def AO_DC_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', volt
 
                 ao_task.close()
             else:
-                ERR_STATEMENT = ERR_STATEMENT + "\nNo. AO channels != No. Voltages"
+                ERR_STATEMENT += "\nNo. AO channels != No. Voltages"
                 raise Exception
         else:
-            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in physical_channel_str'
-            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in device_name'
-            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible using ' + physical_channel_str
+            if c1 is False: ERR_STATEMENT += '\nNo data contained in physical_channel_str'
+            if c2 is False: ERR_STATEMENT += '\nNo data contained in device_name'
+            if c3 is False: ERR_STATEMENT += '\nAnalog Output not possible using ' + physical_channel_str
             raise Exception
     except Exception as e:
         print(ERR_STATEMENT)
@@ -606,17 +606,17 @@ def AO_AC_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', wave
 
                 ao_task.close()
             else:
-                ERR_STATEMENT = ERR_STATEMENT + "\nNo. AO channels != 1"
+                ERR_STATEMENT += "\nNo. AO channels != 1"
                 raise Exception
         else:
-            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in physical_channel_str'
-            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in device_name'
-            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible using ' + physical_channel_str
-            if c4 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for f > %(v1)d ( Hz )'%{"v1":AO_SR_MAX>>3}
-            if c5 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for |amp| + |off| > 10 ( V )'
-            if c6 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for |amp| > 10 ( V )'
-            if c7 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for |off| > 10 ( V )'
-            if c8 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for waveform ' + waveform_choice
+            if c1 is False: ERR_STATEMENT += '\nNo data contained in physical_channel_str'
+            if c2 is False: ERR_STATEMENT += '\nNo data contained in device_name'
+            if c3 is False: ERR_STATEMENT += '\nAnalog Output not possible using ' + physical_channel_str
+            if c4 is False: ERR_STATEMENT += '\nAnalog Output not possible for f > %(v1)d ( Hz )'%{"v1":AO_SR_MAX>>3}
+            if c5 is False: ERR_STATEMENT += '\nAnalog Output not possible for |amp| + |off| > 10 ( V )'
+            if c6 is False: ERR_STATEMENT += '\nAnalog Output not possible for |amp| > 10 ( V )'
+            if c7 is False: ERR_STATEMENT += '\nAnalog Output not possible for |off| > 10 ( V )'
+            if c8 is False: ERR_STATEMENT += '\nAnalog Output not possible for waveform ' + waveform_choice
             raise Exception
     except Exception as e:
         print(ERR_STATEMENT)
@@ -700,17 +700,17 @@ def AO_Random_Output(physical_channel_str = 'Dev2/ao0:1', device_name = 'Dev2', 
                     ao_task.stop()
                     ao_task.close()
             else:
-                if c11 is False: ERR_STATEMENT = ERR_STATEMENT + "\nNo. AO channels != 1"
-                if c12 is False: ERR_STATEMENT = ERR_STATEMENT + '\nt_pulse is too short'
+                if c11 is False: ERR_STATEMENT += "\nNo. AO channels != 1"
+                if c12 is False: ERR_STATEMENT += '\nt_pulse is too short'
                 raise Exception
         else:
-            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in physical_channel_str'
-            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in device_name'
-            if c3 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible using ' + physical_channel_str
-            if c5 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for |amp| + |off| > 10 ( V )'
-            if c6 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for |amp| > 10 ( V )'
-            if c7 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for |off| > 10 ( V )'
-            if c8 is False: ERR_STATEMENT = ERR_STATEMENT + '\nAnalog Output not possible for waveform ' + waveform_choice
+            if c1 is False: ERR_STATEMENT += '\nNo data contained in physical_channel_str'
+            if c2 is False: ERR_STATEMENT += '\nNo data contained in device_name'
+            if c3 is False: ERR_STATEMENT += '\nAnalog Output not possible using ' + physical_channel_str
+            if c5 is False: ERR_STATEMENT += '\nAnalog Output not possible for |amp| + |off| > 10 ( V )'
+            if c6 is False: ERR_STATEMENT += '\nAnalog Output not possible for |amp| > 10 ( V )'
+            if c7 is False: ERR_STATEMENT += '\nAnalog Output not possible for |off| > 10 ( V )'
+            if c8 is False: ERR_STATEMENT += '\nAnalog Output not possible for waveform ' + waveform_choice
             raise Exception
     except Exception as e:
         print(ERR_STATEMENT)
@@ -765,8 +765,8 @@ def AI_Monitor(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev2', loud =
             # Close off the ai_task
             ai_task.close()
         else:
-            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in physical_channel_str'
-            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in device_name'
+            if c1 is False: ERR_STATEMENT += '\nNo data contained in physical_channel_str'
+            if c2 is False: ERR_STATEMENT += '\nNo data contained in device_name'
             raise Exception
     except Exception as e:
         print(ERR_STATEMENT)
@@ -922,8 +922,8 @@ def AI_Timed_DC_Measurement(physical_channel_str = 'Dev2/ai0:3', device_name = '
                 png_files = glob.glob("AI_DC_Meas*.png")
                 Common.Move_Files(DATA_HOME, png_files)
         else:
-            if c1 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in physical_channel_str'
-            if c2 is False: ERR_STATEMENT = ERR_STATEMENT + '\nNo data contained in device_name'
+            if c1 is False: ERR_STATEMENT += '\nNo data contained in physical_channel_str'
+            if c2 is False: ERR_STATEMENT += '\nNo data contained in device_name'
             raise Exception
     except Exception as e:
         print(ERR_STATEMENT)

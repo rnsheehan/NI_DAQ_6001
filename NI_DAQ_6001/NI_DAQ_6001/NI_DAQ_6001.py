@@ -57,4 +57,4 @@ if __name__ == '__main__':
     
     #NI_DAQ_Lib.AO_AC_Output('Dev2/ao0', 'Dev2', 'Sawtooth', 50, 5, 0.0, 0.0)
     
-    NI_DAQ_Lib.AO_Random_Output('Dev2/ao0', 'Dev2', 'PRBS', 0.5/1000.0, 7, 0.0)
+    NI_DAQ_Lib.AO_Random_Output('Dev2/ao0', 'Dev2', 'Random', 0.5/1000.0, 7, 0.0)
