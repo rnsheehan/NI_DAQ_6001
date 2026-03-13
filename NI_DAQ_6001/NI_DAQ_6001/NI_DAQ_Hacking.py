@@ -503,7 +503,7 @@ def AI_Read_Multiple_Channels_Test():
         ao_task = nidaqmx.Task()
         ao_chn_str = 'Dev1/ao0:1'
         ao_task.ao_channels.add_ao_voltage_chan(ao_chn_str, min_val = -10, max_val = +10)
-        ao_SR, ao_no_ch = Extract_Sample_Rate(ao_chn_str, dev_name)
+        ao_SR, ao_no_ch = NI_DAQ_Lib.Extract_Sample_Rate(ao_chn_str, dev_name)
         #ao_task.timing.cfg_samp_clk_timing(sample_rate, sample_mode = AcquisitionType.FINITE, no_samples = 500)
         ao_task.start()
         
@@ -511,7 +511,7 @@ def AI_Read_Multiple_Channels_Test():
         #from nidaqmx.constants import (TerminalConfiguration)
         ai_task = nidaqmx.Task()        
         ai_chn_str = 'Dev1/ai0:3'
-        ai_SR, ai_no_ch = Extract_Sample_Rate(ai_chn_str, dev_name)
+        ai_SR, ai_no_ch = NI_DAQ_Lib.Extract_Sample_Rate(ai_chn_str, dev_name)
         ai_task.ai_channels.add_ai_voltage_chan(ai_chn_str, terminal_config = nidaqmx.constants.TerminalConfiguration.DIFF, min_val = -10, max_val = +10)
         ai_task.timing.cfg_samp_clk_timing(ai_SR, sample_mode = nidaqmx.constants.AcquisitionType.FINITE, samps_per_chan = ai_SR>>2, 
                                            active_edge = nidaqmx.constants.Edge.RISING)
