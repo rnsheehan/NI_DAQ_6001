@@ -826,40 +826,33 @@ def AI_Monitor(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev2', loud =
             try:
                 print("NI-DAQ 6001 reading continuously. Press Ctrl + C to stop.\n")
 
-                # Use hardware timing to generate the plots
-                # allocate buffers to store the measurement data
-                BUFFER_SECONDS = 5 # amount of time shown in single plot
-                sizeBuf = ai_SR * BUFFER_SECONDS
-                timeBuf = numpy.zeros(sizeBuf)
-                dataBuf = numpy.zeros((sizeBuf, ai_no_ch)) 
-
-                # Create Global Write Index
-                writeIndx = 0
-                strtTime = time.time()
-
-                # Set up the Plot
-                from matplotlib.animation import FuncAnimation
-
-                fig, ax = plt.subplots()
-                #lines = [ax.plot([], [], label=ch)[0] for ch in CHANNELS]
-                lines = []
-                for i in range(0, ai_no_ch, 1):
-                    ch = "ai%(v1)d"%{"v1":i}
-                    lines.append( ax.plot([], [], label=ch)[0] )
-                ax.set_xlim(0, BUFFER_SECONDS)
-                ax.set_ylim(-10, 10)
-                ax.legend()
-                ax.set_xlabel("Time (s)")
-                ax.set_ylabel("Voltage (V)")
-                plt.title("Real-Time NI-DAQ Data")
-
                 count = 0
-
+                writeIndx = 0
+                BUFFER_SECONDS = 10
+                sizeBuf = ai_SR * BUFFER_SECONDS
+                timeBuf = numpy.zeros( sizeBuf )
+                dataBuf = numpy.zeros( (ai_no_ch, sizeBuf ) ) if ai_no_ch > 1 else numpy.zeros( sizeBuf )
+                strtTime = time.time()
+                dT = 1.0 / float(ai_SR)
+                #strtTime = 0.0
                 while True: 
                     # read data into memory
                     # ai_task.read returns a numpy array of size (ai_SR rows * ai_no_ch cols)
                     # documentation for read https://nidaqmx-python.readthedocs.io/en/stable/task.html#nidaqmx.task.InStream.read
                     data = ai_task.read(nidaqmx.constants.READ_ALL_AVAILABLE)
+
+                    # # Compute timestamps for these samples
+                    # sampleTimes = strtTime + (writeIndx + numpy.arange(ai_SR)) / ai_SR
+                    # sampleTimes = sampleTimes - timeBuf[0]  # relative time
+
+                    # # Store into ring buffer
+                    indices = (writeIndx + numpy.arange(ai_SR)) % sizeBuf
+                    # timeBuf[indices] = sampleTimes
+                    # #times = timeBuf - timeBuf[writeIndx]
+
+                    # for i in range(0, 20, 1):
+                    #     print(timeBuf[i],",",timeBuf[i]-timeBuf[writeIndx],",",sampleTimes[i])
+                    # print()
 
                     print("Measurement ",count,", no. ch:",len(data))
                     if ai_no_ch > 1:
@@ -867,8 +860,7 @@ def AI_Monitor(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev2', loud =
                         for i in range(0, ai_no_ch, 1):
                             avg = numpy.mean(data[i])
                             stdev = numpy.std(data[i], ddof = 1)
-                            # avg_arr[count][i] = avg
-                            # stdev_arr[count][i] = stdev
+                            dataBuf[i][indices] = data[i]
                             out_str = "ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f ( V )"%{"v1":i, "v2":avg, "v3":stdev}
                             if loud: print(out_str)                        
                         if loud: print()
@@ -876,11 +868,11 @@ def AI_Monitor(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev2', loud =
                         # Single-channel measurement parsing
                         avg = numpy.mean(data)
                         stdev = numpy.std(data, ddof = 1)
-                        # avg_arr[count] = avg
-                        # stdev_arr[count] = stdev
+                        dataBuf[indices] = data
                         out_str = "ai%(v1)d: %(v2)0.4f +/- %(v3)0.4f ( V )"%{"v1":0, "v2":avg, "v3":stdev}
                         if loud: print(out_str)
 
+                    writeIndx = (writeIndx + ai_SR) % sizeBuf
                     count += 1
 
                     # def update(frame):
@@ -889,33 +881,33 @@ def AI_Monitor(physical_channel_str = 'Dev2/ai0:3', device_name = 'Dev2', loud =
 
                     #     #data = ai_task.read(nidaqmx.constants.READ_ALL_AVAILABLE)
 
-                    # Compute timestamps for these samples
-                    sample_times = strtTime + (writeIndx + numpy.arange(ai_SR)) / ai_SR
-                    sample_times = sample_times - timeBuf[0]  # relative time
+                    #     # Compute timestamps for these samples
+                    #     sample_times = strtTime + (writeIndx + numpy.arange(ai_SR)) / ai_SR
+                    #     sample_times = sample_times - timeBuf[0]  # relative time
 
-                    # Store timestamps into ring buffer
-                    indices = (writeIndx + numpy.arange(ai_SR)) % sizeBuf
-                    timeBuf[indices] = sample_times
+                    #     # Store timestamps into ring buffer
+                    #     indices = (writeIndx + numpy.arange(ai_SR)) % sizeBuf
+                    #     timeBuf[indices] = sample_times
 
-                    # Join the measured data with its timestamps
-                    if ai_no_ch > 1:
-                        # Multi-channel measurement parsing
-                        for i in range(0, ai_no_ch, 1):
-                            dataBuf[indices, i] = data[i]
-                    else:
-                        # Single-channel measurement parsing
-                        dataBuf[indices, 0] = data
+                    #     # Join the measured data with its timestamps
+                    #     if ai_no_ch > 1:
+                    #         # Multi-channel measurement parsing
+                    #         for i in range(0, ai_no_ch, 1):
+                    #             dataBuf[indices, i] = data[i]
+                    #     else:
+                    #         # Single-channel measurement parsing
+                    #         dataBuf[indices, 0] = data
 
-                    # Update writeIndx for the next measurement
-                    writeIndx = (writeIndx + ai_SR) % sizeBuf
+                    #     # Update writeIndx for the next measurement
+                    #     writeIndx = (writeIndx + ai_SR) % sizeBuf
 
-                    # Update the plot data
-                    if ai_no_ch > 1:
-                        # Multi-channel measurement parsing
-                        for i in range(0, ai_no_ch, 1):
-                            lines[i].set_data(timeBuf - timeBuf[writeIndx], data[i])
-                    else:
-                        lines[0].set_data(timeBuf - timeBuf[writeIndx], data)
+                    #     # Update the plot data
+                    #     if ai_no_ch > 1:
+                    #         # Multi-channel measurement parsing
+                    #         for i in range(0, ai_no_ch, 1):
+                    #             lines[i].set_data(timeBuf - timeBuf[writeIndx], data[i])
+                    #     else:
+                    #         lines[0].set_data(timeBuf - timeBuf[writeIndx], data)
 
                     # ani = FuncAnimation(fig, update, frames = 10, interval = 10)
                     # plt.show()

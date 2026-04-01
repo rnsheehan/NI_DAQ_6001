@@ -1001,3 +1001,99 @@ def AI_Waveform_Read_Test():
         plot.show()
 
         task.stop()
+
+def Better_AI_Waveform_Read_Test():
+
+    # This code was suggested by CoPilot but it doesn't work
+    # however I think some of the ideas might be useful
+
+    import nidaqmx
+    from nidaqmx.constants import AcquisitionType
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from matplotlib.animation import FuncAnimation
+    import time
+
+    # -----------------------------
+    # User Settings
+    # -----------------------------
+    CHANNELS = ["Dev1/ai0", "Dev1/ai1"]
+    SAMPLE_RATE = 10000              # Hardware sample rate (Hz)
+    SAMPLES_PER_READ = 1000          # Read block size
+    BUFFER_SECONDS = 5               # Amount of data shown in plot
+    # -----------------------------
+
+    # Pre-allocate buffers
+    buffer_size = SAMPLE_RATE * BUFFER_SECONDS
+    time_buffer = np.zeros(buffer_size)
+    data_buffer = np.zeros((buffer_size, len(CHANNELS)))
+
+    # Global write index
+    write_index = 0
+    start_time = time.time()
+
+    # -----------------------------
+    # Configure NI-DAQ hardware-timed task
+    # -----------------------------
+    task = nidaqmx.Task()
+
+    # Add channels
+    for ch in CHANNELS:
+        task.ai_channels.add_ai_voltage_chan(ch)
+
+    # Hardware timed continuous sampling
+    task.timing.cfg_samp_clk_timing(
+        rate=SAMPLE_RATE,
+        sample_mode=AcquisitionType.CONTINUOUS,
+        samps_per_chan=SAMPLES_PER_READ
+    )
+
+    task.start()
+
+    # -----------------------------
+    # Plot setup
+    # -----------------------------
+    fig, ax = plt.subplots()
+    lines = [ax.plot([], [], label=ch)[0] for ch in CHANNELS]
+    ax.set_xlim(0, BUFFER_SECONDS)
+    ax.set_ylim(-10, 10)
+    ax.legend()
+    ax.set_xlabel("Time (s)")
+    ax.set_ylabel("Voltage (V)")
+    plt.title("Real-Time NI-DAQ Data")
+
+    # -----------------------------
+    # Update function for animation
+    # -----------------------------
+    write_index = 0
+    def update(frame):
+        global write_index
+
+        # Read a block of samples from the DAQ
+        samples = task.read(number_of_samples_per_channel=SAMPLES_PER_READ)
+        samples = np.array(samples).T  # shape: (N_samples × N_channels)
+
+        # Compute timestamps for these samples
+        sample_times = start_time + (write_index + np.arange(SAMPLES_PER_READ)) / SAMPLE_RATE
+        sample_times = sample_times - time_buffer[0]  # relative time
+
+        # Store into ring buffer
+        indices = (write_index + np.arange(SAMPLES_PER_READ)) % buffer_size
+        time_buffer[indices] = sample_times
+
+        for c in range(len(CHANNELS)):
+            data_buffer[indices, c] = samples[:, c]
+
+        write_index = (write_index + SAMPLES_PER_READ) % buffer_size
+
+        # Update plot
+        for i, line in enumerate(lines):
+            line.set_data(time_buffer - time_buffer[write_index], data_buffer[:, i])
+
+        return lines
+
+    ani = FuncAnimation(fig, update, interval=50, cache_frame_data=False)
+    plt.show()
+
+    task.stop()
+    task.close()
